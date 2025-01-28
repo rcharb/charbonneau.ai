@@ -1,4 +1,4 @@
-version: 1.1.6
+version: 1.1.7
 
 cache: true
 
@@ -7,6 +7,79 @@ registration:
 
 endpoints:
   custom:
+    # deepseek
+    # https://platform.deepseek.com/api_keys
+    # Model list: https://platform.deepseek.com/api-docs/pricing
+    - name: "Deepseek"
+      apiKey: "${DEEPSEEK_API_KEY}"
+      baseURL: "https://api.deepseek.com/v1"
+      models:
+        default: [
+          "deepseek-chat",
+          "deepseek-reasoner"
+           ]
+        fetch: false
+      titleConvo: true
+      titleModel: "deepseek-chat"
+      modelDisplayLabel: "Deepseek"
+    #
+    # Preplexity
+    # Model list: https://docs.perplexity.ai/docs/model-cards
+    - name: "Perplexity"
+      apiKey: "${PERPLEXITY_API_KEY}"
+      baseURL: "https://api.perplexity.ai/"
+      models:
+        default: [
+          "sonar-pro",  # Updated model name
+          "sonar",      # Updated model name
+          ]
+        fetch: false # fetching list of models is not supported
+      titleConvo: true
+      titleMethod: "completion"  
+      titleModel: "sonar"  # Updated default model
+      summarize: false
+      summaryModel: "sonar"  # Updated summary model
+      forcePrompt: false
+      dropParams: ["stop", "frequency_penalty"]
+      modelDisplayLabel: "Perplexity"
+    #
+    # X.ai
+    # https://api.together.ai/settings/api-keys
+    # # Model list: https://docs.together.ai/docs/inference-models
+    - name: "xai"
+      apiKey: "${XAI_API_KEY}"
+      baseURL: "https://api.x.ai/v1"
+      models:
+        default: [
+        "grok-beta",
+        "grok-vision-beta",
+        "grok-2-latest",
+        ]
+        fetch: false
+      titleConvo: true
+      titleMethod: "completion"
+      titleModel: "grok-2-latest"
+      summarize: false
+      summaryModel: "grok-2-latest"
+      forcePrompt: false
+      modelDisplayLabel: "Grok"
+    #
+    # # groq
+    # # Model list: https://console.groq.com/settings/limits
+    - name: "groq"
+      apiKey: "${GROQ_API_KEY}"
+      baseURL: "https://api.groq.com/openai/v1/"
+      models:
+        default: [
+          "deepseek-r1-distill-llama-70b",
+          "llama-3.2-11b-vision-preview",
+          "llama3-70b-8192",
+          ]
+        fetch: false
+      titleConvo: true
+      titleModel: "llama3-70b-8192"
+      modelDisplayLabel: "groq"
+    #
     # Anyscale
     # # Model list: https://console.anyscale.com/v2/playground
     # - name: "Anyscale"
@@ -416,24 +489,7 @@ endpoints:
     #   modelDisplayLabel: "DEEPNIGHT"
     #   addParams:
     #     stream: True
-    #   iconURL: "https://raw.githubusercontent.com/fuegovic/lc-config-yaml/main/icons/DEEPNIGHT.png"
-
-    # deepseek
-    # https://platform.deepseek.com/api_keys
-    # Model list: https://platform.deepseek.com/api-docs/pricing
-    - name: "Deepseek"
-      apiKey: "${DEEPSEEK_API_KEY}"
-      baseURL: "https://api.deepseek.com/v1"
-      models:
-        default: [
-          "deepseek-chat",
-          "deepseek-reasoner"
-           ]
-        fetch: false
-      titleConvo: true
-      titleModel: "deepseek-chat"
-      modelDisplayLabel: "Deepseek"
-
+    #   iconURL: "https://raw.githubusercontent.com/fuegovic/lc-config-yaml/main/icons/DEEPNIGHT.png"    #
     # Fireworks.ai
     # Models: https://fireworks.ai/models?show=Serverless
     # - name: "Fireworks"
@@ -525,23 +581,7 @@ endpoints:
     #     fetch: false
     #   titleConvo: true
     #   titleModel: "gpt-4o-mini"
-
-    # # groq
-    # # Model list: https://console.groq.com/settings/limits
-    - name: "groq"
-      apiKey: "${GROQ_API_KEY}"
-      baseURL: "https://api.groq.com/openai/v1/"
-      models:
-        default: [
-          "deepseek-r1-distill-llama-70b",
-          "llama-3.2-11b-vision-preview",
-          "llama3-70b-8192",
-          ]
-        fetch: false
-      titleConvo: true
-      titleModel: "llama3-70b-8192"
-      modelDisplayLabel: "groq"
-
+    #
     # # HuggingFace
     # # https://huggingface.co/settings/tokens
     # - name: 'HuggingFace'
@@ -919,27 +959,7 @@ endpoints:
     #   summaryModel: "openai/gpt-4o-mini"
     #   forcePrompt: false
     #   modelDisplayLabel: "OpenRouter"
-
-    # # groq
-    # # Model list: https://console.groq.com/settings/limits
-    - name: "groq"
-      apiKey: "${GROQ_API_KEY}"
-      baseURL: "https://api.groq.com/openai/v1/"
-      models:
-        default: [
-          "sonar-pro",  # Updated model name
-          "sonar",      # Updated model name
-
-          ]
-        fetch: false # fetching list of models is not supported
-      titleConvo: true
-      titleModel: "sonar-pro"  # Updated default model
-      summarize: false
-      summaryModel: "sonar"  # Updated summary model
-      forcePrompt: false
-      dropParams: ["stop", "frequency_penalty"]
-      modelDisplayLabel: "Perplexity"
-
+    #
     # # SambaNova
     # # https://cloud.sambanova.ai/apis
     # - name: "SambaNova"
@@ -1271,25 +1291,3 @@ endpoints:
     #   titleConvo: true
     #   titleModel: "gpt-4o-mini@openai"
     #   dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]
-    
-    
-    # X.ai
-    # https://api.together.ai/settings/api-keys
-    # # Model list: https://docs.together.ai/docs/inference-models
-    - name: "xai"
-      apiKey: "${XAI_API_KEY}"
-      baseURL: "https://api.x.ai/v1"
-      models:
-        default: [
-        "grok-beta",
-        "grok-vision-beta",
-        "grok-2-latest",
-        ]
-        fetch: false
-      titleConvo: true
-      titleMethod: "completion"
-      titleModel: "grok-2-latest"
-      summarize: false
-      summaryModel: "grok-2-latest"
-      forcePrompt: false
-      modelDisplayLabel: "Grok"
