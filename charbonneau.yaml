@@ -920,11 +920,11 @@ endpoints:
     #   forcePrompt: false
     #   modelDisplayLabel: "OpenRouter"
 
-    # Preplexity
-    # Model list: https://docs.perplexity.ai/docs/model-cards
-    - name: "Perplexity"
-      apiKey: "${PERPLEXITY_API_KEY}"
-      baseURL: "https://api.perplexity.ai/"
+    # # groq
+    # # Model list: https://console.groq.com/settings/limits
+    - name: "groq"
+      apiKey: "${GROQ_API_KEY}"
+      baseURL: "https://api.groq.com/openai/v1/"
       models:
         default: [
           "sonar-pro",  # Updated model name
