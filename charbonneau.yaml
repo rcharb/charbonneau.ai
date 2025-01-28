@@ -425,7 +425,10 @@ endpoints:
       apiKey: "${DEEPSEEK_API_KEY}"
       baseURL: "https://api.deepseek.com/v1"
       models:
-        default: ["deepseek-chat", "deepseek-coder", "deepseek-reasoner"]
+        default: [
+          "deepseek-chat",
+          "deepseek-reasoner"
+           ]
         fetch: false
       titleConvo: true
       titleModel: "deepseek-chat"
@@ -525,31 +528,19 @@ endpoints:
 
     # # groq
     # # Model list: https://console.groq.com/settings/limits
-    # - name: "groq"
-    #   apiKey: "${GROQ_API_KEY}"
-    #   baseURL: "https://api.groq.com/openai/v1/"
-    #   models:
-    #     default: [
-    #       "gemma2-9b-it",
-    #       "gemma-7b-it",
-    #       "llama-3.1-8b-instant",
-    #       "llama3-groq-70b-8192-tool-use-preview",
-    #       "llama3-groq-8b-8192-tool-use-preview",
-    #       "llama-3.1-70b-versatile",
-    #       "llama-3.1-70b-specdec",
-    #       "llama-3.1-8b-instant",
-    #       "llama-3.2-1b-preview",
-    #       "llama-3.2-3b-preview",
-    #       "llama-3.2-11b-vision-preview",
-    #       "llama-3.2-90b-vision-preview",
-    #       "llama3-70b-8192",
-    #       "llama3-8b-8192",
-    #       "mixtral-8x7b-32768",
-    #       ]
-    #     fetch: false
-    #   titleConvo: true
-    #   titleModel: "mixtral-8x7b-32768"
-    #   modelDisplayLabel: "groq"
+    - name: "groq"
+      apiKey: "${GROQ_API_KEY}"
+      baseURL: "https://api.groq.com/openai/v1/"
+      models:
+        default: [
+          "deepseek-r1-distill-llama-70b",
+          "llama-3.2-11b-vision-preview",
+          "llama3-70b-8192",
+          ]
+        fetch: false
+      titleConvo: true
+      titleModel: "llama3-70b-8192"
+      modelDisplayLabel: "groq"
 
     # # HuggingFace
     # # https://huggingface.co/settings/tokens
@@ -944,7 +935,7 @@ endpoints:
       titleConvo: true
       titleModel: "sonar-pro"  # Updated default model
       summarize: false
-      summaryModel: "sonar-pro"  # Updated summary model
+      summaryModel: "sonar"  # Updated summary model
       forcePrompt: false
       dropParams: ["stop", "frequency_penalty"]
       modelDisplayLabel: "Perplexity"
@@ -1280,17 +1271,25 @@ endpoints:
     #   titleConvo: true
     #   titleModel: "gpt-4o-mini@openai"
     #   dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]
-
+    
+    
+    # X.ai
+    # https://api.together.ai/settings/api-keys
+    # # Model list: https://docs.together.ai/docs/inference-models
     - name: "xai"
       apiKey: "${XAI_API_KEY}"
       baseURL: "https://api.x.ai/v1"
       models:
-        default: ["grok-beta"]
+        default: [
+        "grok-beta",
+        "grok-vision-beta",
+        "grok-2-latest",
+        ]
         fetch: false
       titleConvo: true
       titleMethod: "completion"
-      titleModel: "grok-beta"
+      titleModel: "grok-2-latest"
       summarize: false
-      summaryModel: "grok-beta"
+      summaryModel: "grok-2-latest"
       forcePrompt: false
       modelDisplayLabel: "Grok"
