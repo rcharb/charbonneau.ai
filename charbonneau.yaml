@@ -16,12 +16,13 @@ endpoints:
       models:
         default: [
           "deepseek-chat",
-          "deepseek-reasoner"
+          "deepseek-coder",
+          "deepseek-reasoner",
            ]
         fetch: false
       titleConvo: true
       titleModel: "deepseek-chat"
-      modelDisplayLabel: "Deepseek"
+      modelDisplayLabel: "DeepSeek"
     #
     # Preplexity
     # Model list: https://docs.perplexity.ai/docs/model-cards
@@ -30,12 +31,12 @@ endpoints:
       baseURL: "https://api.perplexity.ai/"
       models:
         default: [
+          "sonar-reasoning",
           "sonar-pro",  # Updated model name
           "sonar",      # Updated model name
           ]
         fetch: false # fetching list of models is not supported
       titleConvo: true
-      titleMethod: "completion"  
       titleModel: "sonar"  # Updated default model
       summarize: false
       summaryModel: "sonar"  # Updated summary model
