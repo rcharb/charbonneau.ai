@@ -1,6 +1,15 @@
-version: 1.1.7
+version: 1.2.1
 
 cache: true
+fileStrategy: "firebase"
+
+interface:
+  privacyPolicy:
+    externalUrl: 'https://librechat.ai/privacy-policy'
+    openNewTab: true
+  termsOfService:
+    externalUrl: 'https://librechat.ai/tos'
+    openNewTab: true
 
 registration:
   socialLogins: ["discord", "facebook", "github", "google", "openid"]
@@ -10,18 +19,21 @@ endpoints:
     # deepseek
     # https://platform.deepseek.com/api_keys
     # Model list: https://platform.deepseek.com/api-docs/pricing
-    - name: "Deepseek"
+    - name: "deepseek"
       apiKey: "${DEEPSEEK_API_KEY}"
-      baseURL: "https://api.deepseek.com/v1"
+      baseURL: "https://api.deepseek.com"
       models:
         default: [
           "deepseek-chat",
-          "deepseek-reasoner"
-           ]
+          "deepseek-coder",
+          "deepseek-reasoner",
+          ]
         fetch: false
       titleConvo: true
       titleModel: "deepseek-chat"
-      modelDisplayLabel: "Deepseek"
+      summarize: false
+      summaryModel: "deepseek-chat"
+      modelDisplayLabel: "DeepSeek"
     #
     # Preplexity
     # Model list: https://docs.perplexity.ai/docs/model-cards
@@ -30,54 +42,58 @@ endpoints:
       baseURL: "https://api.perplexity.ai/"
       models:
         default: [
-          "sonar-pro",  # Updated model name
-          "sonar",      # Updated model name
+          "sonar-reasoning",
+          "sonar-pro",
+          "sonar",
           ]
         fetch: false # fetching list of models is not supported
       titleConvo: true
-      titleMethod: "completion"  
-      titleModel: "sonar"  # Updated default model
+      titleModel: "sonar"
       summarize: false
-      summaryModel: "sonar"  # Updated summary model
+      summaryModel: "sonar"
       forcePrompt: false
       dropParams: ["stop", "frequency_penalty"]
       modelDisplayLabel: "Perplexity"
+
     #
     # X.ai
     # https://api.together.ai/settings/api-keys
     # # Model list: https://docs.together.ai/docs/inference-models
     - name: "xai"
       apiKey: "${XAI_API_KEY}"
-      baseURL: "https://api.x.ai/v1"
+        baseURL: "https://api.x.ai/v1"
       models:
-        default: [
-        "grok-beta",
-        "grok-vision-beta",
-        "grok-2-latest",
-        ]
+        default: ["grok-beta"]
         fetch: false
       titleConvo: true
       titleMethod: "completion"
-      titleModel: "grok-2-latest"
+      titleModel: "grok-beta"
       summarize: false
-      summaryModel: "grok-2-latest"
+      summaryModel: "grok-beta"
       forcePrompt: false
       modelDisplayLabel: "Grok"
     #
-    # # groq
-    # # Model list: https://console.groq.com/settings/limits
+    # groq
+    # Model list: https://console.groq.com/settings/limits
     - name: "groq"
       apiKey: "${GROQ_API_KEY}"
       baseURL: "https://api.groq.com/openai/v1/"
       models:
         default: [
-          "deepseek-r1-distill-llama-70b",
-          "llama-3.2-11b-vision-preview",
+          "llama-3.1-405b-reasoning",
+          "llama-3.1-70b-versatile",
+          "llama-3.1-8b-instant",
+          "llama3-groq-70b-8192-tool-use-preview",
+          "llama3-groq-8b-8192-tool-use-preview",
           "llama3-70b-8192",
+          "llama3-8b-8192",
+          "mixtral-8x7b-32768",
+          "gemma-7b-it",
+          "gemma2-9b-it"
           ]
         fetch: false
       titleConvo: true
-      titleModel: "llama3-70b-8192"
+      titleModel: "mixtral-8x7b-32768"
       modelDisplayLabel: "groq"
     #
     # Anyscale
