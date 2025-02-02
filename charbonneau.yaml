@@ -37,7 +37,7 @@ endpoints:
           ]
         fetch: false # fetching list of models is not supported
       titleConvo: true
-      titleModel: "sonar"  # Updated default model
+      titleModel: "current_model"  # Updated default model
       summarize: false
       summaryModel: "sonar"  # Updated summary model
       forcePrompt: false
