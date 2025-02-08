@@ -1,6 +1,6 @@
 version: 1.1.7
 
-cache: true
+cache: false
 
 registration:
   socialLogins: ["discord", "facebook", "github", "google", "openid"]
@@ -21,7 +21,7 @@ endpoints:
            ]
         fetch: false
       titleConvo: true
-      titleModel: "deepseek-chat"
+      titleModel: "current_model"
       modelDisplayLabel: "DeepSeek"
     #
     # Preplexity
@@ -59,7 +59,7 @@ endpoints:
         fetch: false
       titleConvo: true
       titleMethod: "completion"
-      titleModel: "grok-2-latest"
+      titleModel: "current_model"
       summarize: false
       summaryModel: "grok-2-latest"
       forcePrompt: false
@@ -78,7 +78,7 @@ endpoints:
           ]
         fetch: false
       titleConvo: true
-      titleModel: "llama3-70b-8192"
+      titleModel: "current_model"
       modelDisplayLabel: "groq"
     #
     # Anyscale
