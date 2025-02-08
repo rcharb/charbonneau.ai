@@ -1,6 +1,6 @@
 version: 1.1.7
 
-cache: false
+cache: true
 
 registration:
   socialLogins: ["discord", "facebook", "github", "google", "openid"]
@@ -21,7 +21,7 @@ endpoints:
            ]
         fetch: false
       titleConvo: true
-      titleModel: "current_model"
+      titleModel: "deepseek-chat"
       modelDisplayLabel: "DeepSeek"
     #
     # Preplexity
@@ -31,13 +31,13 @@ endpoints:
       baseURL: "https://api.perplexity.ai/"
       models:
         default: [
+          "sonar",      # Updated model name
           "sonar-reasoning",
           "sonar-pro",  # Updated model name
-          "sonar",      # Updated model name
           ]
         fetch: false # fetching list of models is not supported
       titleConvo: true
-      titleModel: "current_model"  # Updated default model
+      titleModel: "sonar"  # Updated default model
       summarize: false
       summaryModel: "sonar"  # Updated summary model
       forcePrompt: false
@@ -52,9 +52,9 @@ endpoints:
       baseURL: "https://api.x.ai/v1"
       models:
         default: [
+        "grok-2-latest",
         "grok-beta",
         "grok-vision-beta",
-        "grok-2-latest",
         ]
         fetch: false
       titleConvo: true
