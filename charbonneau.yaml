@@ -10,7 +10,7 @@ mcpServers:
     type: stdio        # use a local subprocess for the MCP server
     command: npx
     args:
-      - "-y"
+      - -y
       - "@modelcontextprotocol/server-brave-search"
     env:
       BRAVE_API_KEY: : "${BRAVE_SEARCH_API_KEY}"
