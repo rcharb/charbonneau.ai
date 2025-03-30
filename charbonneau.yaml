@@ -43,7 +43,7 @@ endpoints:
           "sonar",      # Updated model name
           "sonar-pro",
           "sonar-reasoning",
-          "sonar-reasoning-pro"
+          "sonar-reasoning-pro",
           "sonar-deep-research",
           ]
         fetch: false # fetching list of models is not supported
