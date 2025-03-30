@@ -26,7 +26,6 @@ endpoints:
       models:
         default: [
           "deepseek-chat",
-          "deepseek-coder",
           "deepseek-reasoner",
            ]
         fetch: false
@@ -42,8 +41,10 @@ endpoints:
       models:
         default: [
           "sonar",      # Updated model name
+          "sonar-pro",
           "sonar-reasoning",
-          "sonar-pro",  # Updated model name
+          "sonar-reasoning-pro"
+          "sonar-deep-research",
           ]
         fetch: false # fetching list of models is not supported
       titleConvo: true
