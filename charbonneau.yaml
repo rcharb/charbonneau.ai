@@ -2,8 +2,9 @@ version: 1.1.7
 
 cache: true
 
+# Example Registration Object Structure (optional)
 registration:
-  socialLogins: ["discord", "facebook", "github", "google", "opened"]
+  socialLogins: ['github', 'google', 'discord', 'openid', 'facebook', 'apple']
 
 # mcpServers:
 #  brave-search:
