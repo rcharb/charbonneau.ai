@@ -3,8 +3,11 @@ version: 1.2.1
 cache: true
 
 # Example Registration Object Structure (optional)
-registration:
-  socialLogins: ['google', 'facebook', 'apple']
+# registration:
+#  socialLogins: ['google', 'facebook', 'apple']
+
+interface:
+  runCode: false
 
 # mcpServers:
 #  brave-search:
