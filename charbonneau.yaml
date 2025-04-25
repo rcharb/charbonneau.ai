@@ -64,9 +64,10 @@ endpoints:
       baseURL: "https://api.x.ai/v1"
       models:
         default: [
-        "grok-2-latest",
-        "grok-beta",
-        "grok-vision-beta",
+        "grok-3-beta",
+        "grok-3-mini-beta",
+        "grok-2-image-1212",
+        "grok-2-vision-1212"        
         ]
         fetch: false
       titleConvo: true
