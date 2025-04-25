@@ -2,10 +2,6 @@ version: 1.2.1
 
 cache: true
 
-# Example Registration Object Structure (optional)
-# registration:
-#  socialLogins: ['google', 'facebook', 'apple']
-
 interface:
   runCode: false
 
@@ -69,7 +65,6 @@ endpoints:
         default: [
         "grok-3-beta",
         "grok-3-mini-beta",
-        "grok-2-image-1212",
         "grok-2-vision-1212"        
         ]
         fetch: false
