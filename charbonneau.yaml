@@ -15,6 +15,17 @@ interface:
 #    env:
 #      BRAVE_API_KEY: "${BRAVE_SEARCH_API_KEY}"
 
+speech:
+  tts:
+    openai:
+      apiKey: '${OPENAI_API_KEY}'
+      model: 'tts-1'
+      voices: ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer']
+  stt:
+    openai:
+      apiKey: '${OPENAI_API_KEY}'
+      model: 'whisper-1'
+
 endpoints:
   custom:
     # deepseek
