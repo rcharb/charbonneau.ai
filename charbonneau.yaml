@@ -30,8 +30,8 @@ endpoints:
   azureOpenAI:
     # Endpoint-level configuration
     titleModel: "gpt-4.1"
-    plugins: true
-    assistants: true
+    plugins: false
+    assistants: false
     groups:
     # Group-level configuration
     - group: "rene-openai-services-new"
