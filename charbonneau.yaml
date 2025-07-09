@@ -29,7 +29,7 @@ speech:
 endpoints:
   azureOpenAI:
     # Endpoint-level configuration
-    titleModel: "gpt-4.1"
+    titleModel: "gpt-4.1-mini"
     plugins: false
     assistants: false
     groups:
