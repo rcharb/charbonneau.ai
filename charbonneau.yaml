@@ -40,24 +40,14 @@ endpoints:
       version: "2025-01-01-preview"
       # Model-level configuration
       models:
+        gpt-4o-mini:
+          deploymentName: gpt-4o-mini
+        o4-mini:
+          deploymentName: gpt-o4-mini
         gpt-4.1:
           deploymentName: gpt-4.1
-          version: "2025-01-01-preview"
-        #gpt-3.5-turbo:
-        #  deploymentName: gpt-35-turbo
-        #gpt-4-1106-preview:
-        #  deploymentName: gpt-4-1106-preview
-
-    # Group-level configuration
-    #- group: "my-resource-sweden"
-    #  apiKey: "${SWEDEN_API_KEY}"
-    #  instanceName: "my-resource-sweden"
-    #  deploymentName: gpt-4-1106-preview
-    #  version: "2024-03-01-preview"
-    #  assistants: true
-      # Model-level configuration
-    #  models:
-    #    gpt-4-turbo: true
+        gpt-4.1-mini:
+          deploymentName: gpt-4.1-mini
   custom:
     # deepseek
     # https://platform.deepseek.com/api_keys
