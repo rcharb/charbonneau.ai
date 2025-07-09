@@ -27,6 +27,37 @@ speech:
       model: 'whisper-1'
 
 endpoints:
+  azureOpenAI:
+    # Endpoint-level configuration
+    titleModel: "gpt-4.1"
+    plugins: true
+    assistants: true
+    groups:
+    # Group-level configuration
+    - group: "rene-openai-services-new"
+      apiKey: "${WORK_RENE_API_KEY}"
+      instanceName: "rene-openai-services-new"
+      version: "2025-01-01-preview"
+      # Model-level configuration
+      models:
+        gpt-4.1:
+          deploymentName: gpt-4.1
+          version: "2025-01-01-preview"
+        #gpt-3.5-turbo:
+        #  deploymentName: gpt-35-turbo
+        #gpt-4-1106-preview:
+        #  deploymentName: gpt-4-1106-preview
+
+    # Group-level configuration
+    #- group: "my-resource-sweden"
+    #  apiKey: "${SWEDEN_API_KEY}"
+    #  instanceName: "my-resource-sweden"
+    #  deploymentName: gpt-4-1106-preview
+    #  version: "2024-03-01-preview"
+    #  assistants: true
+      # Model-level configuration
+    #  models:
+    #    gpt-4-turbo: true
   custom:
     # deepseek
     # https://platform.deepseek.com/api_keys
