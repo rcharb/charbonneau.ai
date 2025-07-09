@@ -29,7 +29,6 @@ speech:
 endpoints:
   azureOpenAI:
     # Endpoint-level configuration
-    titleModel: "gpt-4.1-mini"
     plugins: false
     assistants: false
     groups:
@@ -48,6 +47,8 @@ endpoints:
           deploymentName: gpt-4.1
         gpt-4.1-mini:
           deploymentName: gpt-4.1-mini
+      titleModel: "gpt-4.1-mini"
+      titleConvo: true
   custom:
     # deepseek
     # https://platform.deepseek.com/api_keys
