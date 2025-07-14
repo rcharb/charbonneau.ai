@@ -15,6 +15,15 @@ interface:
 #    env:
 #      BRAVE_API_KEY: "${BRAVE_SEARCH_API_KEY}"
 
+memory:
+  disabled: false
+  tokenLimit: 3000
+  personalize: true
+  messageWindowSize: 10
+  agent:
+    provider: "azureOpenAI"
+    model: "gpt-4.1-mini"
+
 speech:
   tts:
     openai:
