@@ -107,15 +107,15 @@ endpoints:
         default: [
         "grok-4",
         "grok-3",
-        "grok-3-mini-beta",
-        "grok-2-vision-1212"        
+        "grok-3-mini",
+        "grok-3-mini-fast"        
         ]
         fetch: false
       titleConvo: true
       titleMethod: "completion"
-      titleModel: "current_model"
+      titleModel: "grok-3-mini-fast"
       summarize: false
-      summaryModel: "grok-2-latest"
+      summaryModel: "grok-3-mini-fast"
       forcePrompt: false
       modelDisplayLabel: "Grok"
     #
