@@ -103,7 +103,7 @@ endpoints:
         fetch: false
       titleConvo: true
       titleMethod: "completion"
-      titleModel: "current_model"
+      titleModel: "llama3-70b-8192"
       summarize: false
       summaryModel: "grok-3-mini-fast"
       forcePrompt: false
