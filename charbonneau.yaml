@@ -105,7 +105,8 @@ endpoints:
       baseURL: "https://api.x.ai/v1"
       models:
         default: [
-        "grok-3-beta",
+        "grok-4"
+        "grok-3",
         "grok-3-mini-beta",
         "grok-2-vision-1212"        
         ]
