@@ -103,7 +103,7 @@ endpoints:
         fetch: false
       titleConvo: true
       titleMethod: "completion"
-      titleModel: "gpt-4.1-mini"
+      titleModel: "grok-3-mini"
       summarize: false
       summaryModel: "grok-3-mini-fast"
       forcePrompt: false
