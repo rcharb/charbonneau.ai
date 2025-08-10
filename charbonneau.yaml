@@ -26,11 +26,17 @@ speech:
       model: 'whisper-1'
 
 modelSpecs:
-  #addedEndpoints:
-  # - agents
+  addedEndpoints:
+    - agents
+    - openAI
+    - azureOpenAI
+    - google
+    - anthropic
+    
   enforce: false
   prioritize: false
   list:
+    # Default Agent
     - name: "Jimm.AI"
       label: "The friendly home AI"
       default: true
@@ -38,6 +44,108 @@ modelSpecs:
         endpoint: "agents"
         modelLabel: "Jimm.AI"
         agent_id: "66e3807d-1287-419b-a0bb-3957b75dd0df"
+
+    # Deepseek
+    - name: "Deepseek_Chat"
+      label: "DeepSeek Chat"
+      preset:
+        endpoint: "Deepseek"
+        model: "deepseek-chat"
+        modelLabel: "DeepSeek Chat"
+
+    - name: "Deepseek_Reasoner"
+      label: "DeepSeek Reasoner"
+      preset:
+        endpoint: "Deepseek"
+        model: "deepseek-reasoner"
+        modelLabel: "DeepSeek Reasoner"
+
+    # Perplexity
+    - name: "Perplexity_Sonar"
+      label: "Perplexity Sonar"
+      preset:
+        endpoint: "Perplexity"
+        model: "sonar"
+        modelLabel: "Perplexity Sonar"
+
+    - name: "Perplexity_SonarPro"
+      label: "Perplexity Sonar Pro"
+      preset:
+        endpoint: "Perplexity"
+        model: "sonar-pro"
+        modelLabel: "Perplexity Sonar Pro"
+
+    - name: "Perplexity_SonarReasoning"
+      label: "Perplexity Sonar Reasoning"
+      preset:
+        endpoint: "Perplexity"
+        model: "sonar-reasoning"
+        modelLabel: "Perplexity Sonar Reasoning"
+
+    - name: "Perplexity_SonarReasoningPro"
+      label: "Perplexity Sonar Reasoning Pro"
+      preset:
+        endpoint: "Perplexity"
+        model: "sonar-reasoning-pro"
+        modelLabel: "Perplexity Sonar Reasoning Pro"
+
+    - name: "Perplexity_SonarDeepResearch"
+      label: "Perplexity Sonar Deep Research"
+      preset:
+        endpoint: "Perplexity"
+        model: "sonar-deep-research"
+        modelLabel: "Perplexity Sonar Deep Research"
+
+    # xAI
+    - name: "xAI_Grok4"
+      label: "Grok-4 (xAI)"
+      preset:
+        endpoint: "xai"
+        model: "grok-4"
+        modelLabel: "Grok-4"
+
+    - name: "xAI_Grok3"
+      label: "Grok-3 (xAI)"
+      preset:
+        endpoint: "xai"
+        model: "grok-3"
+        modelLabel: "Grok-3"
+
+    - name: "xAI_Grok3Mini"
+      label: "Grok-3 Mini (xAI)"
+      preset:
+        endpoint: "xai"
+        model: "grok-3-mini"
+        modelLabel: "Grok-3 Mini"
+
+    - name: "xAI_Grok3MiniFast"
+      label: "Grok-3 Mini Fast (xAI)"
+      preset:
+        endpoint: "xai"
+        model: "grok-3-mini-fast"
+        modelLabel: "Grok-3 Mini Fast"
+
+    # Groq
+    - name: "Groq_DeepseekR1DistillL70B"
+      label: "DeepSeek R1 Distill L70B (Groq)"
+      preset:
+        endpoint: "groq"
+        model: "deepseek-r1-distill-llama-70b"
+        modelLabel: "DeepSeek R1 Distill L70B"
+
+    - name: "Groq_Llama3_2_11b_Vision_Preview"
+      label: "Llama 3.2 11B Vision (Groq)"
+      preset:
+        endpoint: "groq"
+        model: "llama-3.2-11b-vision-preview"
+        modelLabel: "Llama 3.2 11B Vision"
+
+    - name: "Groq_Llama3_70B_8192"
+      label: "Llama 3 70B (Groq)"
+      preset:
+        endpoint: "groq"
+        model: "llama3-70b-8192"
+        modelLabel: "Llama 3 70B"
 
 interface:
   modelSelect: true
