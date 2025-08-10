@@ -26,8 +26,8 @@ speech:
       model: 'whisper-1'
 
 modelSpecs:
-  addedEndpoints:
-    - agents
+  #addedEndpoints:
+  # - agents
   enforce: false
   prioritize: false
   list:
