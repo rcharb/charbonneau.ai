@@ -25,17 +25,22 @@ speech:
       apiKey: '${OPENAI_API_KEY}'
       model: 'whisper-1'
 
-#modelSpecs:
-#  enforce: false
-#  prioritize: false
-#  list:
-#    - name: "Jimm.AI"
-#      label: "The friendly home AI"
-#      default: true
-#      preset:
-#        endpoint: "agents"
-#        modelLabel: "Jimm.AI"
-#        agent_id: "66e3807d-1287-419b-a0bb-3957b75dd0df"
+modelSpecs:
+  addedEndpoints:
+    - agents
+  enforce: false
+  prioritize: false
+  list:
+    - name: "Jimm.AI"
+      label: "The friendly home AI"
+      default: true
+      preset:
+        endpoint: "agents"
+        modelLabel: "Jimm.AI"
+        agent_id: "66e3807d-1287-419b-a0bb-3957b75dd0df"
+
+interface:
+  modelSelect: true
         
 endpoints:
   azureOpenAI:
