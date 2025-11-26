@@ -26,6 +26,7 @@ services:
         target: /app/.env
       - ./images:/app/client/public/images
       - ./logs:/app/api/logs
+      - ./api/strategies/socialLogin.js:/app/api/strategies/socialLogin.js
   mongodb:
     container_name: chat-mongodb
     image: mongo
