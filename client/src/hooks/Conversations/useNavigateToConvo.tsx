@@ -1,43 +1,90 @@
+import { useCallback } from 'react';
 import { useSetRecoilState } from 'recoil';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { QueryKeys, EModelEndpoint, LocalStorageKeys, Constants } from 'librechat-data-provider';
-import type { TConversation, TEndpointsConfig, TModelsConfig } from 'librechat-data-provider';
-import { buildDefaultConvo, getDefaultEndpoint, getEndpointField } from '~/utils';
+import { QueryKeys, Constants, dataService, getEndpointField } from 'librechat-data-provider';
+import type {
+  TEndpointsConfig,
+  TStartupConfig,
+  TModelsConfig,
+  TConversation,
+} from 'librechat-data-provider';
+import { getDefaultEndpoint, clearMessagesCache, buildDefaultConvo, logger } from '~/utils';
+import { useApplyModelSpecEffects } from '~/hooks/Agents';
 import store from '~/store';
 
 const useNavigateToConvo = (index = 0) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const clearAllConversations = store.useClearConvoState();
-  const clearAllLatestMessages = store.useClearLatestMessages(`useNavigateToConvo ${index}`);
+  const applyModelSpecEffects = useApplyModelSpecEffects();
   const setSubmission = useSetRecoilState(store.submissionByIndex(index));
-  const { hasSetConversation, setConversation } = store.useCreateConversationAtom(index);
+  const clearAllLatestMessages = store.useClearLatestMessages(`useNavigateToConvo ${index}`);
+  const { hasSetConversation, setConversation: setConvo } = store.useCreateConversationAtom(index);
+
+  const setConversation = useCallback(
+    (conversation: TConversation) => {
+      setConvo(conversation);
+      if (!conversation.spec) {
+        return;
+      }
+
+      const startupConfig = queryClient.getQueryData<TStartupConfig>([QueryKeys.startupConfig]);
+      applyModelSpecEffects({
+        startupConfig,
+        specName: conversation?.spec,
+        convoId: conversation.conversationId,
+      });
+    },
+    [setConvo, queryClient, applyModelSpecEffects],
+  );
+
+  const fetchFreshData = async (conversation?: Partial<TConversation>) => {
+    const conversationId = conversation?.conversationId;
+    if (!conversationId) {
+      return;
+    }
+    try {
+      const data = await queryClient.fetchQuery([QueryKeys.conversation, conversationId], () =>
+        dataService.getConversationById(conversationId),
+      );
+      logger.log('conversation', 'Fetched fresh conversation data', data);
+      setConversation(data);
+      navigate(`/c/${conversationId ?? Constants.NEW_CONVO}`, { state: { focusChat: true } });
+    } catch (error) {
+      console.error('Error fetching conversation data on navigation', error);
+      if (conversation) {
+        setConversation(conversation as TConversation);
+        navigate(`/c/${conversationId}`, { state: { focusChat: true } });
+      }
+    }
+  };
 
   const navigateToConvo = (
     conversation?: TConversation | null,
-    _resetLatestMessage = true,
-    invalidateMessages = false,
+    options?: {
+      resetLatestMessage?: boolean;
+      currentConvoId?: string;
+    },
   ) => {
     if (!conversation) {
-      console.log('Conversation not provided');
+      logger.warn('conversation', 'Conversation not provided to `navigateToConvo`');
       return;
     }
+    const { resetLatestMessage = true, currentConvoId } = options || {};
+    logger.log('conversation', 'Navigating to conversation', conversation);
     hasSetConversation.current = true;
     setSubmission(null);
-    if (_resetLatestMessage) {
+    if (resetLatestMessage) {
+      logger.log('latest_message', 'Clearing all latest messages');
       clearAllLatestMessages();
-    }
-    if (invalidateMessages && conversation.conversationId != null && conversation.conversationId) {
-      queryClient.setQueryData([QueryKeys.messages, Constants.NEW_CONVO], []);
-      queryClient.invalidateQueries([QueryKeys.messages, conversation.conversationId]);
     }
 
     let convo = { ...conversation };
-    if (!convo.endpoint) {
-      /* undefined endpoint edge case */
+    const endpointsConfig = queryClient.getQueryData<TEndpointsConfig>([QueryKeys.endpoints]);
+    if (!convo.endpoint || !endpointsConfig?.[convo.endpoint]) {
+      /* undefined/removed endpoint edge case */
       const modelsConfig = queryClient.getQueryData<TModelsConfig>([QueryKeys.models]);
-      const endpointsConfig = queryClient.getQueryData<TEndpointsConfig>([QueryKeys.endpoints]);
       const defaultEndpoint = getDefaultEndpoint({
         convoSetup: conversation,
         endpointsConfig,
@@ -51,52 +98,25 @@ const useNavigateToConvo = (index = 0) => {
       const models = modelsConfig?.[defaultEndpoint ?? ''] ?? [];
 
       convo = buildDefaultConvo({
+        models,
         conversation,
         endpoint: defaultEndpoint,
         lastConversationSetup: conversation,
-        models,
       });
     }
     clearAllConversations(true);
-    setConversation(convo);
-    navigate(`/c/${convo.conversationId ?? Constants.NEW_CONVO}`);
-  };
-
-  const navigateWithLastTools = (
-    conversation?: TConversation | null,
-    _resetLatestMessage?: boolean,
-    invalidateMessages?: boolean,
-  ) => {
-    if (!conversation) {
-      console.log('Conversation not provided');
-      return;
-    }
-    // set conversation to the new conversation
-    if (conversation.endpoint === EModelEndpoint.gptPlugins) {
-      let lastSelectedTools = [];
-      try {
-        lastSelectedTools =
-          JSON.parse(localStorage.getItem(LocalStorageKeys.LAST_TOOLS) ?? '') ?? [];
-      } catch (e) {
-        // console.error(e);
-      }
-      const hasTools = (conversation.tools?.length ?? 0) > 0;
-      navigateToConvo(
-        {
-          ...conversation,
-          tools: hasTools ? conversation.tools : lastSelectedTools,
-        },
-        _resetLatestMessage,
-        invalidateMessages,
-      );
+    clearMessagesCache(queryClient, currentConvoId);
+    if (convo.conversationId !== Constants.NEW_CONVO && convo.conversationId) {
+      queryClient.invalidateQueries([QueryKeys.conversation, convo.conversationId]);
+      fetchFreshData(convo);
     } else {
-      navigateToConvo(conversation, _resetLatestMessage, invalidateMessages);
+      setConversation(convo);
+      navigate(`/c/${convo.conversationId ?? Constants.NEW_CONVO}`, { state: { focusChat: true } });
     }
   };
 
   return {
     navigateToConvo,
-    navigateWithLastTools,
   };
 };
 

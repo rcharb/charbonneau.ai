@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
+import { getEndpointField } from 'librechat-data-provider';
 import type * as t from 'librechat-data-provider';
-import { getEndpointField, getIconKey, getEntity, getIconEndpoint } from '~/utils';
-import { icons } from '~/components/Chat/Menus/Endpoints/Icons';
+import { getIconKey, getEntity, getIconEndpoint } from '~/utils';
 import ConvoIconURL from '~/components/Endpoints/ConvoIconURL';
+import { icons } from '~/hooks/Endpoint/Icons';
 
 export default function ConvoIcon({
   conversation,

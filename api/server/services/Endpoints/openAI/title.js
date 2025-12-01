@@ -1,6 +1,6 @@
+const { isEnabled } = require('@librechat/api');
 const { CacheKeys } = require('librechat-data-provider');
 const getLogStores = require('~/cache/getLogStores');
-const { isEnabled } = require('~/server/utils');
 const { saveConvo } = require('~/models');
 
 const addTitle = async (req, { text, response, client }) => {
@@ -10,11 +10,6 @@ const addTitle = async (req, { text, response, client }) => {
   }
 
   if (client.options.titleConvo === false) {
-    return;
-  }
-
-  // If the request was aborted and is not azure, don't generate the title.
-  if (!client.azure && client.abortController.signal.aborted) {
     return;
   }
 

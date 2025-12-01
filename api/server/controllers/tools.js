@@ -1,15 +1,59 @@
 const { nanoid } = require('nanoid');
 const { EnvVar } = require('@librechat/agents');
-const { Tools, AuthType, ToolCallTypes } = require('librechat-data-provider');
+const { logger } = require('@librechat/data-schemas');
+const { checkAccess, loadWebSearchAuth } = require('@librechat/api');
+const {
+  Tools,
+  AuthType,
+  Permissions,
+  ToolCallTypes,
+  PermissionTypes,
+} = require('librechat-data-provider');
 const { processFileURL, uploadImageBuffer } = require('~/server/services/Files/process');
 const { processCodeOutput } = require('~/server/services/Files/Code/process');
-const { loadAuthValues, loadTools } = require('~/app/clients/tools/util');
 const { createToolCall, getToolCallsByConvo } = require('~/models/ToolCall');
+const { loadAuthValues } = require('~/server/services/Tools/credentials');
+const { loadTools } = require('~/app/clients/tools/util');
+const { getRoleByName } = require('~/models/Role');
 const { getMessage } = require('~/models/Message');
-const { logger } = require('~/config');
 
 const fieldsMap = {
   [Tools.execute_code]: [EnvVar.CODE_API_KEY],
+};
+
+const toolAccessPermType = {
+  [Tools.execute_code]: PermissionTypes.RUN_CODE,
+};
+
+/**
+ * Verifies web search authentication, ensuring each category has at least
+ * one fully authenticated service.
+ *
+ * @param {ServerRequest} req - The request object
+ * @param {ServerResponse} res - The response object
+ * @returns {Promise<void>} A promise that resolves when the function has completed
+ */
+const verifyWebSearchAuth = async (req, res) => {
+  try {
+    const appConfig = req.config;
+    const userId = req.user.id;
+    /** @type {TCustomConfig['webSearch']} */
+    const webSearchConfig = appConfig?.webSearch || {};
+    const result = await loadWebSearchAuth({
+      userId,
+      loadAuthValues,
+      webSearchConfig,
+      throwError: false,
+    });
+
+    return res.status(200).json({
+      authenticated: result.authenticated,
+      authTypes: result.authTypes,
+    });
+  } catch (error) {
+    console.error('Error in verifyWebSearchAuth:', error);
+    return res.status(500).json({ message: error.message });
+  }
 };
 
 /**
@@ -20,6 +64,9 @@ const fieldsMap = {
 const verifyToolAuth = async (req, res) => {
   try {
     const { toolId } = req.params;
+    if (toolId === Tools.web_search) {
+      return await verifyWebSearchAuth(req, res);
+    }
     const authFields = fieldsMap[toolId];
     if (!authFields) {
       res.status(404).json({ message: 'Tool not found' });
@@ -33,6 +80,7 @@ const verifyToolAuth = async (req, res) => {
         throwError: false,
       });
     } catch (error) {
+      logger.error('Error loading auth values', error);
       res.status(200).json({ authenticated: false, message: AuthType.USER_PROVIDED });
       return;
     }
@@ -58,10 +106,12 @@ const verifyToolAuth = async (req, res) => {
 /**
  * @param {ServerRequest} req - The request object, containing information about the HTTP request.
  * @param {ServerResponse} res - The response object, used to send back the desired HTTP response.
+ * @param {NextFunction} next - The next middleware function to call.
  * @returns {Promise<void>} A promise that resolves when the function has completed.
  */
 const callTool = async (req, res) => {
   try {
+    const appConfig = req.config;
     const { toolId = '' } = req.params;
     if (!fieldsMap[toolId]) {
       logger.warn(`[${toolId}/call] User ${req.user.id} attempted call to invalid tool`);
@@ -83,6 +133,21 @@ const callTool = async (req, res) => {
       return;
     }
     logger.debug(`[${toolId}/call] User: ${req.user.id}`);
+    let hasAccess = true;
+    if (toolAccessPermType[toolId]) {
+      hasAccess = await checkAccess({
+        user: req.user,
+        permissionType: toolAccessPermType[toolId],
+        permissions: [Permissions.USE],
+        getRoleByName,
+      });
+    }
+    if (!hasAccess) {
+      logger.warn(
+        `[${toolAccessPermType[toolId]}] Forbidden: Insufficient permissions for User ${req.user.id}: ${Permissions.USE}`,
+      );
+      return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+    }
     const { loadedTools } = await loadTools({
       user: req.user.id,
       tools: [toolId],
@@ -92,8 +157,10 @@ const callTool = async (req, res) => {
         returnMetadata: true,
         processFileURL,
         uploadImageBuffer,
-        fileStrategy: req.app.locals.fileStrategy,
       },
+      webSearch: appConfig.webSearch,
+      fileStrategy: appConfig.fileStrategy,
+      imageOutputType: appConfig.imageOutputType,
     });
 
     const tool = loadedTools[0];

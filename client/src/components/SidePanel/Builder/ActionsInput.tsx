@@ -1,6 +1,7 @@
 import debounce from 'lodash/debounce';
 import { useState, useEffect } from 'react';
 import { useFormContext } from 'react-hook-form';
+import { Spinner, useToastContext } from '@librechat/client';
 import {
   validateAndParseOpenAPISpec,
   openapiToFunction,
@@ -15,11 +16,11 @@ import type {
 } from 'librechat-data-provider';
 import type { ActionAuthForm, ActionWithNullableMetadata } from '~/common';
 import type { Spec } from './ActionsTable';
-import { useAssistantsMapContext, useToastContext } from '~/Providers';
+import ActionCallback from '~/components/SidePanel/Builder/ActionCallback';
+import { useAssistantsMapContext } from '~/Providers';
 import { ActionsTable, columns } from './ActionsTable';
 import { useUpdateAction } from '~/data-provider';
-import useLocalize from '~/hooks/useLocalize';
-import { Spinner } from '~/components/svg';
+import { useLocalize } from '~/hooks';
 
 const debouncedValidation = debounce(
   (input: string, callback: (result: ValidationResult) => void) => {
@@ -259,8 +260,8 @@ export default function ActionsInput({
         </div>
       </div>
       {!!data && (
-        <div>
-          <div className="mb-1.5 flex items-center">
+        <div className="my-2">
+          <div className="flex items-center">
             <label className="text-token-text-primary block font-medium">
               {localize('com_assistants_available_actions')}
             </label>
@@ -269,6 +270,7 @@ export default function ActionsInput({
         </div>
       )}
       <div className="relative my-1">
+        <ActionCallback action_id={action?.action_id} />
         <div className="mb-1.5 flex items-center">
           <label className="text-token-text-primary block font-medium">
             {localize('com_ui_privacy_policy_url')}
@@ -278,7 +280,7 @@ export default function ActionsInput({
           <input
             type="text"
             placeholder="https://api.example-weather-app.com/privacy"
-            className="flex-1 rounded-lg bg-transparent px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-border-light"
+            className="flex-1 rounded-lg bg-transparent px-3 py-1.5 text-sm outline-none placeholder:text-text-secondary-alt focus:ring-1 focus:ring-border-light"
           />
         </div>
       </div>

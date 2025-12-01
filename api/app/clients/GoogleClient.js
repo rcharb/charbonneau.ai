@@ -1,6 +1,10 @@
 const { google } = require('googleapis');
+const { sleep } = require('@librechat/agents');
+const { logger } = require('@librechat/data-schemas');
+const { getModelMaxTokens } = require('@librechat/api');
 const { concat } = require('@langchain/core/utils/stream');
 const { ChatVertexAI } = require('@langchain/google-vertexai');
+const { Tokenizer, getSafetySettings } = require('@librechat/api');
 const { ChatGoogleGenerativeAI } = require('@langchain/google-genai');
 const { GoogleGenerativeAI: GenAI } = require('@google/generative-ai');
 const { HumanMessage, SystemMessage } = require('@langchain/core/messages');
@@ -9,18 +13,17 @@ const {
   validateVisionModel,
   getResponseSender,
   endpointSettings,
+  parseTextParts,
   EModelEndpoint,
+  googleSettings,
+  ContentTypes,
   VisionModes,
   ErrorTypes,
   Constants,
   AuthKeys,
 } = require('librechat-data-provider');
 const { encodeAndFormat } = require('~/server/services/Files/images');
-const Tokenizer = require('~/server/services/Tokenizer');
 const { spendTokens } = require('~/models/spendTokens');
-const { getModelMaxTokens } = require('~/utils');
-const { sleep } = require('~/server/utils');
-const { logger } = require('~/config');
 const {
   formatMessage,
   createContextHandlers,
@@ -31,7 +34,8 @@ const BaseClient = require('./BaseClient');
 
 const loc = process.env.GOOGLE_LOC || 'us-central1';
 const publisher = 'google';
-const endpointPrefix = `${loc}-aiplatform.googleapis.com`;
+const endpointPrefix =
+  loc === 'global' ? 'aiplatform.googleapis.com' : `${loc}-aiplatform.googleapis.com`;
 
 const settings = endpointSettings[EModelEndpoint.google];
 const EXCLUDED_GENAI_MODELS = /gemini-(?:1\.0|1-0|pro)/;
@@ -49,7 +53,7 @@ class GoogleClient extends BaseClient {
 
     const serviceKey = creds[AuthKeys.GOOGLE_SERVICE_KEY] ?? {};
     this.serviceKey =
-      serviceKey && typeof serviceKey === 'string' ? JSON.parse(serviceKey) : serviceKey ?? {};
+      serviceKey && typeof serviceKey === 'string' ? JSON.parse(serviceKey) : (serviceKey ?? {});
     /** @type {string | null | undefined} */
     this.project_id = this.serviceKey.project_id;
     this.client_email = this.serviceKey.client_email;
@@ -70,7 +74,9 @@ class GoogleClient extends BaseClient {
     /** The key for the usage object's output tokens
      * @type {string} */
     this.outputTokensKey = 'output_tokens';
-
+    this.visionMode = VisionModes.generative;
+    /** @type {string} */
+    this.systemMessage;
     if (options.skipSetOptions) {
       return;
     }
@@ -135,8 +141,7 @@ class GoogleClient extends BaseClient {
     this.options.attachments?.then((attachments) => this.checkVisionRequest(attachments));
 
     /** @type {boolean} Whether using a "GenerativeAI" Model */
-    this.isGenerativeModel =
-      this.modelOptions.model.includes('gemini') || this.modelOptions.model.includes('learnlm');
+    this.isGenerativeModel = /gemini|learnlm|gemma/.test(this.modelOptions.model);
 
     this.maxContextTokens =
       this.options.maxContextTokens ??
@@ -161,6 +166,16 @@ class GoogleClient extends BaseClient {
       );
     }
 
+    // Add thinking configuration
+    this.modelOptions.thinkingConfig = {
+      thinkingBudget:
+        (this.modelOptions.thinking ?? googleSettings.thinking.default)
+          ? this.modelOptions.thinkingBudget
+          : 0,
+    };
+    delete this.modelOptions.thinking;
+    delete this.modelOptions.thinkingBudget;
+
     this.sender =
       this.options.sender ??
       getResponseSender({
@@ -182,7 +197,7 @@ class GoogleClient extends BaseClient {
     if (typeof this.options.artifactsPrompt === 'string' && this.options.artifactsPrompt) {
       promptPrefix = `${promptPrefix ?? ''}\n${this.options.artifactsPrompt}`.trim();
     }
-    this.options.promptPrefix = promptPrefix;
+    this.systemMessage = promptPrefix;
     this.initializeClient();
     return this;
   }
@@ -194,7 +209,11 @@ class GoogleClient extends BaseClient {
    */
   checkVisionRequest(attachments) {
     /* Validation vision request */
-    this.defaultVisionModel = this.options.visionModel ?? 'gemini-pro-vision';
+    this.defaultVisionModel =
+      this.options.visionModel ??
+      (!EXCLUDED_GENAI_MODELS.test(this.modelOptions.model)
+        ? this.modelOptions.model
+        : 'gemini-pro-vision');
     const availableModels = this.options.modelsConfig?.[EModelEndpoint.google];
     this.isVisionModel = validateVisionModel({ model: this.modelOptions.model, availableModels });
 
@@ -215,10 +234,29 @@ class GoogleClient extends BaseClient {
   }
 
   formatMessages() {
-    return ((message) => ({
-      author: message?.author ?? (message.isCreatedByUser ? this.userLabel : this.modelLabel),
-      content: message?.content ?? message.text,
-    })).bind(this);
+    return ((message) => {
+      const msg = {
+        author: message?.author ?? (message.isCreatedByUser ? this.userLabel : this.modelLabel),
+        content: message?.content ?? message.text,
+      };
+
+      if (!message.image_urls?.length) {
+        return msg;
+      }
+
+      msg.content = (
+        !Array.isArray(msg.content)
+          ? [
+              {
+                type: ContentTypes.TEXT,
+                [ContentTypes.TEXT]: msg.content,
+              },
+            ]
+          : msg.content
+      ).concat(message.image_urls);
+
+      return msg;
+    }).bind(this);
   }
 
   /**
@@ -267,7 +305,9 @@ class GoogleClient extends BaseClient {
     const { files, image_urls } = await encodeAndFormat(
       this.options.req,
       attachments,
-      EModelEndpoint.google,
+      {
+        endpoint: EModelEndpoint.google,
+      },
       mode,
     );
     message.image_urls = image_urls.length ? image_urls : undefined;
@@ -290,10 +330,13 @@ class GoogleClient extends BaseClient {
           this.contextHandlers?.processFile(file);
           continue;
         }
+        if (file.metadata?.fileIdentifier) {
+          continue;
+        }
       }
 
       this.augmentedPrompt = await this.contextHandlers.createContext();
-      this.options.promptPrefix = this.augmentedPrompt + this.options.promptPrefix;
+      this.systemMessage = this.augmentedPrompt + this.systemMessage;
     }
   }
 
@@ -340,8 +383,8 @@ class GoogleClient extends BaseClient {
       throw new Error('[GoogleClient] PaLM 2 and Codey models are no longer supported.');
     }
 
-    if (this.options.promptPrefix) {
-      const instructionsTokenCount = this.getTokenCount(this.options.promptPrefix);
+    if (this.systemMessage) {
+      const instructionsTokenCount = this.getTokenCount(this.systemMessage);
 
       this.maxContextTokens = this.maxContextTokens - instructionsTokenCount;
       if (this.maxContextTokens < 0) {
@@ -396,8 +439,8 @@ class GoogleClient extends BaseClient {
       ],
     };
 
-    if (this.options.promptPrefix) {
-      payload.instances[0].context = this.options.promptPrefix;
+    if (this.systemMessage) {
+      payload.instances[0].context = this.systemMessage;
     }
 
     logger.debug('[GoogleClient] buildMessages', payload);
@@ -443,7 +486,7 @@ class GoogleClient extends BaseClient {
       identityPrefix = `${identityPrefix}\nYou are ${this.options.modelLabel}`;
     }
 
-    let promptPrefix = (this.options.promptPrefix ?? '').trim();
+    let promptPrefix = (this.systemMessage ?? '').trim();
 
     if (identityPrefix) {
       promptPrefix = `${identityPrefix}${promptPrefix}`;
@@ -566,7 +609,17 @@ class GoogleClient extends BaseClient {
 
     if (this.project_id != null) {
       logger.debug('Creating VertexAI client');
-      return new ChatVertexAI(clientOptions);
+      this.visionMode = undefined;
+      clientOptions.streaming = true;
+      const client = new ChatVertexAI(clientOptions);
+      client.temperature = clientOptions.temperature;
+      client.topP = clientOptions.topP;
+      client.topK = clientOptions.topK;
+      client.topLogprobs = clientOptions.topLogprobs;
+      client.frequencyPenalty = clientOptions.frequencyPenalty;
+      client.presencePenalty = clientOptions.presencePenalty;
+      client.maxOutputTokens = clientOptions.maxOutputTokens;
+      return client;
     } else if (!EXCLUDED_GENAI_MODELS.test(model)) {
       logger.debug('Creating GenAI client');
       return new GenAI(this.apiKey).getGenerativeModel({ model }, requestOptions);
@@ -577,7 +630,7 @@ class GoogleClient extends BaseClient {
   }
 
   initializeClient() {
-    let clientOptions = { ...this.modelOptions, maxRetries: 2 };
+    let clientOptions = { ...this.modelOptions };
 
     if (this.project_id) {
       clientOptions['authOptions'] = {
@@ -598,16 +651,17 @@ class GoogleClient extends BaseClient {
   }
 
   async getCompletion(_payload, options = {}) {
-    const safetySettings = this.getSafetySettings();
     const { onProgress, abortController } = options;
+    const safetySettings = getSafetySettings(this.modelOptions.model);
     const streamRate = this.options.streamRate ?? Constants.DEFAULT_STREAM_RATE;
     const modelName = this.modelOptions.modelName ?? this.modelOptions.model ?? '';
 
     let reply = '';
-
+    /** @type {Error} */
+    let error;
     try {
       if (!EXCLUDED_GENAI_MODELS.test(modelName) && !this.project_id) {
-        /** @type {GenAI} */
+        /** @type {GenerativeModel} */
         const client = this.client;
         /** @type {GenerateContentRequest} */
         const requestOptions = {
@@ -616,7 +670,7 @@ class GoogleClient extends BaseClient {
           generationConfig: googleGenConfigSchema.parse(this.modelOptions),
         };
 
-        const promptPrefix = (this.options.promptPrefix ?? '').trim();
+        const promptPrefix = (this.systemMessage ?? '').trim();
         if (promptPrefix.length) {
           requestOptions.systemInstruction = {
             parts: [
@@ -631,7 +685,17 @@ class GoogleClient extends BaseClient {
         /** @type {GenAIUsageMetadata} */
         let usageMetadata;
 
-        const result = await client.generateContentStream(requestOptions);
+        abortController.signal.addEventListener(
+          'abort',
+          () => {
+            logger.warn('[GoogleClient] Request was aborted', abortController.signal.reason);
+          },
+          { once: true },
+        );
+
+        const result = await client.generateContentStream(requestOptions, {
+          signal: abortController.signal,
+        });
         for await (const chunk of result.stream) {
           usageMetadata = !usageMetadata
             ? chunk?.usageMetadata
@@ -663,7 +727,9 @@ class GoogleClient extends BaseClient {
 
       /** @type {import('@langchain/core/messages').AIMessageChunk['usage_metadata']} */
       let usageMetadata;
-      const stream = await this.client.stream(messages, {
+      /** @type {ChatVertexAI} */
+      const client = this.client;
+      const stream = await client.stream(messages, {
         signal: abortController.signal,
         streamUsage: true,
         safetySettings,
@@ -681,10 +747,18 @@ class GoogleClient extends BaseClient {
       }
 
       for await (const chunk of stream) {
-        usageMetadata = !usageMetadata
-          ? chunk?.usage_metadata
-          : concat(usageMetadata, chunk?.usage_metadata);
-        const chunkText = chunk?.content ?? chunk;
+        if (chunk?.usage_metadata) {
+          const metadata = chunk.usage_metadata;
+          for (const key in metadata) {
+            if (Number.isNaN(metadata[key])) {
+              delete metadata[key];
+            }
+          }
+
+          usageMetadata = !usageMetadata ? metadata : concat(usageMetadata, metadata);
+        }
+
+        const chunkText = chunk?.content ?? '';
         await this.generateTextStream(chunkText, onProgress, {
           delay,
         });
@@ -695,7 +769,15 @@ class GoogleClient extends BaseClient {
         this.usage = usageMetadata;
       }
     } catch (e) {
+      error = e;
       logger.error('[GoogleClient] There was an issue generating the completion', e);
+    }
+
+    if (error != null && reply === '') {
+      const errorMessage = `{ "type": "${ErrorTypes.GoogleError}", "info": "${
+        error.message ?? 'The Google provider failed to generate content, please contact the Admin.'
+      }" }`;
+      throw new Error(errorMessage);
     }
     return reply;
   }
@@ -706,6 +788,22 @@ class GoogleClient extends BaseClient {
    */
   getStreamUsage() {
     return this.usage;
+  }
+
+  getMessageMapMethod() {
+    /**
+     * @param {TMessage} msg
+     */
+    return (msg) => {
+      if (msg.text != null && msg.text && msg.text.startsWith(':::thinking')) {
+        msg.text = msg.text.replace(/:::thinking.*?:::/gs, '').trim();
+      } else if (msg.content != null) {
+        msg.text = parseTextParts(msg.content, true);
+        delete msg.content;
+      }
+
+      return msg;
+    };
   }
 
   /**
@@ -762,12 +860,12 @@ class GoogleClient extends BaseClient {
    * Stripped-down logic for generating a title. This uses the non-streaming APIs, since the user does not see titles streaming
    */
   async titleChatCompletion(_payload, options = {}) {
-    const { abortController } = options;
-    const safetySettings = this.getSafetySettings();
-
     let reply = '';
+    const { abortController } = options;
 
-    const model = this.modelOptions.modelName ?? this.modelOptions.model ?? '';
+    const model =
+      this.options.titleModel ?? this.modelOptions.modelName ?? this.modelOptions.model ?? '';
+    const safetySettings = getSafetySettings(model);
     if (!EXCLUDED_GENAI_MODELS.test(model) && !this.project_id) {
       logger.debug('Identified titling model as GenAI version');
       /** @type {GenerativeModel} */
@@ -825,17 +923,6 @@ class GoogleClient extends BaseClient {
       },
     ]);
 
-    const model = process.env.GOOGLE_TITLE_MODEL ?? this.modelOptions.model;
-    const availableModels = this.options.modelsConfig?.[EModelEndpoint.google];
-    this.isVisionModel = validateVisionModel({ model, availableModels });
-
-    if (this.isVisionModel) {
-      logger.warn(
-        `Current vision model does not support titling without an attachment; falling back to default model ${settings.model.default}`,
-      );
-      this.modelOptions.model = settings.model.default;
-    }
-
     try {
       this.initializeClient();
       title = await this.titleChatCompletion(payload, {
@@ -871,48 +958,6 @@ class GoogleClient extends BaseClient {
     let reply = '';
     reply = await this.getCompletion(payload, opts);
     return reply.trim();
-  }
-
-  getSafetySettings() {
-    const model = this.modelOptions.model;
-    const isGemini2 = model.includes('gemini-2.0') && !model.includes('thinking');
-    const mapThreshold = (value) => {
-      if (isGemini2 && value === 'BLOCK_NONE') {
-        return 'OFF';
-      }
-      return value;
-    };
-
-    return [
-      {
-        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-        threshold: mapThreshold(
-          process.env.GOOGLE_SAFETY_SEXUALLY_EXPLICIT || 'HARM_BLOCK_THRESHOLD_UNSPECIFIED',
-        ),
-      },
-      {
-        category: 'HARM_CATEGORY_HATE_SPEECH',
-        threshold: mapThreshold(
-          process.env.GOOGLE_SAFETY_HATE_SPEECH || 'HARM_BLOCK_THRESHOLD_UNSPECIFIED',
-        ),
-      },
-      {
-        category: 'HARM_CATEGORY_HARASSMENT',
-        threshold: mapThreshold(
-          process.env.GOOGLE_SAFETY_HARASSMENT || 'HARM_BLOCK_THRESHOLD_UNSPECIFIED',
-        ),
-      },
-      {
-        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-        threshold: mapThreshold(
-          process.env.GOOGLE_SAFETY_DANGEROUS_CONTENT || 'HARM_BLOCK_THRESHOLD_UNSPECIFIED',
-        ),
-      },
-      {
-        category: 'HARM_CATEGORY_CIVIC_INTEGRITY',
-        threshold: mapThreshold(process.env.GOOGLE_SAFETY_CIVIC_INTEGRITY || 'BLOCK_NONE'),
-      },
-    ];
   }
 
   getEncoding() {

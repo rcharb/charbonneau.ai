@@ -1,28 +1,30 @@
-import React, { memo, useMemo } from 'react';
-import {
-  SandpackPreview,
-  SandpackProvider,
+import React, { memo, useMemo, type MutableRefObject } from 'react';
+import { SandpackPreview, SandpackProvider } from '@codesandbox/sandpack-react/unstyled';
+import type {
   SandpackProviderProps,
+  SandpackPreviewRef,
 } from '@codesandbox/sandpack-react/unstyled';
-import type { SandpackPreviewRef } from '@codesandbox/sandpack-react/unstyled';
+import type { TStartupConfig } from 'librechat-data-provider';
 import type { ArtifactFiles } from '~/common';
 import { sharedFiles, sharedOptions } from '~/utils/artifacts';
-import { useEditorContext } from '~/Providers';
 
 export const ArtifactPreview = memo(function ({
   files,
   fileKey,
-  previewRef,
-  sharedProps,
   template,
+  sharedProps,
+  previewRef,
+  currentCode,
+  startupConfig,
 }: {
   files: ArtifactFiles;
   fileKey: string;
   template: SandpackProviderProps['template'];
   sharedProps: Partial<SandpackProviderProps>;
-  previewRef: React.MutableRefObject<SandpackPreviewRef>;
+  previewRef: MutableRefObject<SandpackPreviewRef>;
+  currentCode?: string;
+  startupConfig?: TStartupConfig;
 }) {
-  const { currentCode } = useEditorContext();
   const artifactFiles = useMemo(() => {
     if (Object.keys(files).length === 0) {
       return files;
@@ -33,22 +35,28 @@ export const ArtifactPreview = memo(function ({
     }
     return {
       ...files,
-      [fileKey]: {
-        code,
-      },
+      [fileKey]: { code },
     };
   }, [currentCode, files, fileKey]);
+
+  const options: typeof sharedOptions = useMemo(() => {
+    if (!startupConfig) {
+      return sharedOptions;
+    }
+    return {
+      ...sharedOptions,
+      bundlerURL: template === 'static' ? startupConfig.staticBundlerURL : startupConfig.bundlerURL,
+    };
+  }, [startupConfig, template]);
+
   if (Object.keys(artifactFiles).length === 0) {
     return null;
   }
 
   return (
     <SandpackProvider
-      files={{
-        ...artifactFiles,
-        ...sharedFiles,
-      }}
-      options={{ ...sharedOptions }}
+      files={{ ...artifactFiles, ...sharedFiles }}
+      options={options}
       {...sharedProps}
       template={template}
     >

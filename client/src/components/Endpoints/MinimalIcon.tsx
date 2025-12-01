@@ -10,8 +10,8 @@ import {
   AnthropicIcon,
   BedrockIcon,
   Sparkles,
-} from '~/components/svg';
-import UnknownIcon from '~/components/Chat/Menus/Endpoints/UnknownIcon';
+} from '@librechat/client';
+import UnknownIcon from '~/hooks/Endpoint/UnknownIcon';
 import { IconProps } from '~/common';
 import { cn } from '~/utils';
 
@@ -69,6 +69,7 @@ const MinimalIcon: React.FC<IconProps> = (props) => {
     <div
       data-testid="convo-icon"
       title={name}
+      aria-hidden="true"
       style={{
         width: size,
         height: size,

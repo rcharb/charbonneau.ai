@@ -34,7 +34,41 @@ export const useGetToolCalls = <TData = t.ToolCallResults>(
       enabled:
         conversationId.length > 0 &&
         conversationId !== Constants.NEW_CONVO &&
+        conversationId !== Constants.PENDING_CONVO &&
         conversationId !== Constants.SEARCH,
+      ...config,
+    },
+  );
+};
+
+export const useMCPConnectionStatusQuery = (
+  config?: UseQueryOptions<t.MCPConnectionStatusResponse>,
+): QueryObserverResult<t.MCPConnectionStatusResponse> => {
+  return useQuery<t.MCPConnectionStatusResponse>(
+    [QueryKeys.mcpConnectionStatus],
+    () => dataService.getMCPConnectionStatus(),
+    {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchOnMount: false,
+      staleTime: 10000, // 10 seconds
+      ...config,
+    },
+  );
+};
+
+export const useMCPAuthValuesQuery = (
+  serverName: string,
+  config?: UseQueryOptions<t.MCPAuthValuesResponse>,
+): QueryObserverResult<t.MCPAuthValuesResponse> => {
+  return useQuery<t.MCPAuthValuesResponse>(
+    [QueryKeys.mcpAuthValues, serverName],
+    () => dataService.getMCPAuthValues(serverName),
+    {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchOnMount: false,
+      enabled: !!serverName,
       ...config,
     },
   );

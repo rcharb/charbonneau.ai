@@ -1,37 +1,18 @@
 import { useRecoilValue } from 'recoil';
 import { useEffect, useMemo } from 'react';
-import { useGetStartupConfig } from 'librechat-data-provider/react-query';
-import { FileSources, LocalStorageKeys, getConfigDefaults } from 'librechat-data-provider';
+import { FileSources, LocalStorageKeys } from 'librechat-data-provider';
 import type { ExtendedFile } from '~/common';
-import DragDropWrapper from '~/components/Chat/Input/Files/DragDropWrapper';
 import { useDeleteFilesMutation } from '~/data-provider';
+import DragDropWrapper from '~/components/Chat/Input/Files/DragDropWrapper';
+import { EditorProvider, SidePanelProvider, ArtifactsProvider } from '~/Providers';
 import Artifacts from '~/components/Artifacts/Artifacts';
-import { SidePanel } from '~/components/SidePanel';
+import { SidePanelGroup } from '~/components/SidePanel';
 import { useSetFilesToDelete } from '~/hooks';
-import { EditorProvider } from '~/Providers';
 import store from '~/store';
 
-const defaultInterface = getConfigDefaults().interface;
-
-export default function Presentation({
-  children,
-  useSidePanel = false,
-  panel,
-}: {
-  children: React.ReactNode;
-  panel?: React.ReactNode;
-  useSidePanel?: boolean;
-}) {
-  const { data: startupConfig } = useGetStartupConfig();
+export default function Presentation({ children }: { children: React.ReactNode }) {
   const artifacts = useRecoilValue(store.artifactsState);
-  const codeArtifacts = useRecoilValue(store.codeArtifacts);
-  const hideSidePanel = useRecoilValue(store.hideSidePanel);
-  const artifactsVisible = useRecoilValue(store.artifactsVisible);
-
-  const interfaceConfig = useMemo(
-    () => startupConfig?.interface ?? defaultInterface,
-    [startupConfig],
-  );
+  const artifactsVisibility = useRecoilValue(store.artifactsVisibility);
 
   const setFilesToDelete = useSetFilesToDelete();
 
@@ -76,43 +57,37 @@ export default function Presentation({
   }, []);
   const fullCollapse = useMemo(() => localStorage.getItem('fullPanelCollapse') === 'true', []);
 
-  const layout = () => (
-    <div className="transition-width relative flex h-full w-full flex-1 flex-col items-stretch overflow-hidden bg-presentation pt-0">
-      <div className="flex h-full flex-col" role="presentation">
-        {children}
-      </div>
-    </div>
-  );
+  /**
+   * Memoize artifacts JSX to prevent recreating it on every render
+   * This is critical for performance - prevents entire artifact tree from re-rendering
+   */
+  const artifactsElement = useMemo(() => {
+    if (artifactsVisibility === true && Object.keys(artifacts ?? {}).length > 0) {
+      return (
+        <ArtifactsProvider>
+          <EditorProvider>
+            <Artifacts />
+          </EditorProvider>
+        </ArtifactsProvider>
+      );
+    }
+    return null;
+  }, [artifactsVisibility, artifacts]);
 
-  if (useSidePanel && !hideSidePanel && interfaceConfig.sidePanel === true) {
-    return (
-      <DragDropWrapper className="relative flex w-full grow overflow-hidden bg-presentation">
-        <SidePanel
+  return (
+    <DragDropWrapper className="relative flex w-full grow overflow-hidden bg-presentation">
+      <SidePanelProvider>
+        <SidePanelGroup
           defaultLayout={defaultLayout}
-          defaultCollapsed={defaultCollapsed}
           fullPanelCollapse={fullCollapse}
-          artifacts={
-            artifactsVisible === true &&
-            codeArtifacts === true &&
-            Object.keys(artifacts ?? {}).length > 0 ? (
-                <EditorProvider>
-                  <Artifacts />
-                </EditorProvider>
-              ) : null
-          }
+          defaultCollapsed={defaultCollapsed}
+          artifacts={artifactsElement}
         >
           <main className="flex h-full flex-col overflow-y-auto" role="main">
             {children}
           </main>
-        </SidePanel>
-      </DragDropWrapper>
-    );
-  }
-
-  return (
-    <DragDropWrapper className="relative flex w-full grow overflow-hidden bg-presentation">
-      {layout()}
-      {panel != null && panel}
+        </SidePanelGroup>
+      </SidePanelProvider>
     </DragDropWrapper>
   );
 }

@@ -1,7 +1,7 @@
 import { Save } from 'lucide-react';
 import { useForm } from 'react-hook-form';
+import { HoverCard, HoverCardTrigger } from '@librechat/client';
 import { TPlugin, TPluginAuthConfig, TPluginAction } from 'librechat-data-provider';
-import { HoverCard, HoverCardTrigger } from '~/components/ui';
 import PluginTooltip from './PluginTooltip';
 import { useLocalize } from '~/hooks';
 
@@ -59,8 +59,8 @@ function PluginAuthForm({ plugin, onSubmit, isEntityTool }: TPluginAuthFormProps
                       {...register(authField, {
                         required: `${config.label} is required.`,
                         minLength: {
-                          value: 10,
-                          message: `${config.label} must be at least 10 characters long`,
+                          value: 1,
+                          message: `${config.label} must be at least 1 character long`,
                         },
                       })}
                       className="flex h-10 max-h-10 w-full resize-none rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm text-gray-700 shadow-[0_0_10px_rgba(0,0,0,0.05)] outline-none placeholder:text-gray-400 focus:border-gray-400 focus:bg-gray-50 focus:outline-none focus:ring-0 focus:ring-gray-400 focus:ring-opacity-0 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-50 dark:shadow-[0_0_15px_rgba(0,0,0,0.10)] dark:focus:border-gray-400 focus:dark:bg-gray-600 dark:focus:outline-none dark:focus:ring-0 dark:focus:ring-gray-400 dark:focus:ring-offset-0"

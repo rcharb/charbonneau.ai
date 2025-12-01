@@ -1,4 +1,7 @@
-const { Tools, StepTypes, imageGenTools, FileContext } = require('librechat-data-provider');
+const { nanoid } = require('nanoid');
+const { sendEvent } = require('@librechat/api');
+const { logger } = require('@librechat/data-schemas');
+const { Tools, StepTypes, FileContext, ErrorTypes } = require('librechat-data-provider');
 const {
   EnvVar,
   Providers,
@@ -8,19 +11,10 @@ const {
   handleToolCalls,
   ChatModelStreamHandler,
 } = require('@librechat/agents');
+const { processFileCitations } = require('~/server/services/Files/Citations');
 const { processCodeOutput } = require('~/server/services/Files/Code/process');
+const { loadAuthValues } = require('~/server/services/Tools/credentials');
 const { saveBase64Image } = require('~/server/services/Files/process');
-const { loadAuthValues } = require('~/app/clients/tools/util');
-const { logger, sendEvent } = require('~/config');
-
-/** @typedef {import('@librechat/agents').Graph} Graph */
-/** @typedef {import('@librechat/agents').EventHandler} EventHandler */
-/** @typedef {import('@librechat/agents').ModelEndData} ModelEndData */
-/** @typedef {import('@librechat/agents').ToolEndData} ToolEndData */
-/** @typedef {import('@librechat/agents').ToolEndCallback} ToolEndCallback */
-/** @typedef {import('@librechat/agents').ChatModelStreamHandler} ChatModelStreamHandler */
-/** @typedef {import('@librechat/agents').ContentAggregatorResult['aggregateContent']} ContentAggregator */
-/** @typedef {import('@librechat/agents').GraphEvents} GraphEvents */
 
 class ModelEndHandler {
   /**
@@ -33,43 +27,81 @@ class ModelEndHandler {
     this.collectedUsage = collectedUsage;
   }
 
+  finalize(errorMessage) {
+    if (!errorMessage) {
+      return;
+    }
+    throw new Error(errorMessage);
+  }
+
   /**
    * @param {string} event
    * @param {ModelEndData | undefined} data
    * @param {Record<string, unknown> | undefined} metadata
-   * @param {Graph} graph
-   * @returns
+   * @param {StandardGraph} graph
+   * @returns {Promise<void>}
    */
-  handle(event, data, metadata, graph) {
+  async handle(event, data, metadata, graph) {
     if (!graph || !metadata) {
       console.warn(`Graph or metadata not found in ${event} event`);
       return;
     }
 
+    /** @type {string | undefined} */
+    let errorMessage;
     try {
-      if (metadata.provider === Providers.GOOGLE || graph.clientOptions?.disableStreaming) {
-        handleToolCalls(data?.output?.tool_calls, metadata, graph);
+      const agentContext = graph.getAgentContext(metadata);
+      const isGoogle = agentContext.provider === Providers.GOOGLE;
+      const streamingDisabled = !!agentContext.clientOptions?.disableStreaming;
+      if (data?.output?.additional_kwargs?.stop_reason === 'refusal') {
+        const info = { ...data.output.additional_kwargs };
+        errorMessage = JSON.stringify({
+          type: ErrorTypes.REFUSAL,
+          info,
+        });
+        logger.debug(`[ModelEndHandler] Model refused to respond`, {
+          ...info,
+          userId: metadata.user_id,
+          messageId: metadata.run_id,
+          conversationId: metadata.thread_id,
+        });
+      }
+
+      const toolCalls = data?.output?.tool_calls;
+      let hasUnprocessedToolCalls = false;
+      if (Array.isArray(toolCalls) && toolCalls.length > 0 && graph?.toolCallStepIds?.has) {
+        try {
+          hasUnprocessedToolCalls = toolCalls.some(
+            (tc) => tc?.id && !graph.toolCallStepIds.has(tc.id),
+          );
+        } catch {
+          hasUnprocessedToolCalls = false;
+        }
+      }
+      if (isGoogle || streamingDisabled || hasUnprocessedToolCalls) {
+        await handleToolCalls(toolCalls, metadata, graph);
       }
 
       const usage = data?.output?.usage_metadata;
       if (!usage) {
-        return;
+        return this.finalize(errorMessage);
       }
-      if (metadata?.model) {
-        usage.model = metadata.model;
+      const modelName = metadata?.ls_model_name || agentContext.clientOptions?.model;
+      if (modelName) {
+        usage.model = modelName;
       }
 
       this.collectedUsage.push(usage);
-      if (!graph.clientOptions?.disableStreaming) {
-        return;
+      if (!streamingDisabled) {
+        return this.finalize(errorMessage);
       }
       if (!data.output.content) {
-        return;
+        return this.finalize(errorMessage);
       }
       const stepKey = graph.getStepKey(metadata);
       const message_id = getMessageId(stepKey, graph) ?? '';
       if (message_id) {
-        graph.dispatchRunStep(stepKey, {
+        await graph.dispatchRunStep(stepKey, {
           type: StepTypes.MESSAGE_CREATION,
           message_creation: {
             message_id,
@@ -79,7 +111,7 @@ class ModelEndHandler {
       const stepId = graph.getStepIdByKey(stepKey);
       const content = data.output.content;
       if (typeof content === 'string') {
-        graph.dispatchMessageDelta(stepId, {
+        await graph.dispatchMessageDelta(stepId, {
           content: [
             {
               type: 'text',
@@ -88,14 +120,28 @@ class ModelEndHandler {
           ],
         });
       } else if (content.every((c) => c.type?.startsWith('text'))) {
-        graph.dispatchMessageDelta(stepId, {
+        await graph.dispatchMessageDelta(stepId, {
           content,
         });
       }
     } catch (error) {
       logger.error('Error handling model end event:', error);
+      return this.finalize(errorMessage);
     }
   }
+}
+
+/**
+ * @deprecated Agent Chain helper
+ * @param {string | undefined} [last_agent_id]
+ * @param {string | undefined} [langgraph_node]
+ * @returns {boolean}
+ */
+function checkIfLastAgent(last_agent_id, langgraph_node) {
+  if (!last_agent_id || !langgraph_node) {
+    return false;
+  }
+  return langgraph_node?.endsWith(last_agent_id);
 }
 
 /**
@@ -116,7 +162,7 @@ function getDefaultHandlers({ res, aggregateContent, toolEndCallback, collectedU
   }
   const handlers = {
     [GraphEvents.CHAT_MODEL_END]: new ModelEndHandler(collectedUsage),
-    [GraphEvents.TOOL_END]: new ToolEndHandler(toolEndCallback),
+    [GraphEvents.TOOL_END]: new ToolEndHandler(toolEndCallback, logger),
     [GraphEvents.CHAT_MODEL_STREAM]: new ChatModelStreamHandler(),
     [GraphEvents.ON_RUN_STEP]: {
       /**
@@ -128,7 +174,7 @@ function getDefaultHandlers({ res, aggregateContent, toolEndCallback, collectedU
       handle: (event, data, metadata) => {
         if (data?.stepDetails.type === StepTypes.TOOL_CALLS) {
           sendEvent(res, { event, data });
-        } else if (metadata?.last_agent_index === metadata?.agent_index) {
+        } else if (checkIfLastAgent(metadata?.last_agent_id, metadata?.langgraph_node)) {
           sendEvent(res, { event, data });
         } else if (!metadata?.hide_sequential_outputs) {
           sendEvent(res, { event, data });
@@ -157,7 +203,7 @@ function getDefaultHandlers({ res, aggregateContent, toolEndCallback, collectedU
       handle: (event, data, metadata) => {
         if (data?.delta.type === StepTypes.TOOL_CALLS) {
           sendEvent(res, { event, data });
-        } else if (metadata?.last_agent_index === metadata?.agent_index) {
+        } else if (checkIfLastAgent(metadata?.last_agent_id, metadata?.langgraph_node)) {
           sendEvent(res, { event, data });
         } else if (!metadata?.hide_sequential_outputs) {
           sendEvent(res, { event, data });
@@ -175,7 +221,7 @@ function getDefaultHandlers({ res, aggregateContent, toolEndCallback, collectedU
       handle: (event, data, metadata) => {
         if (data?.result != null) {
           sendEvent(res, { event, data });
-        } else if (metadata?.last_agent_index === metadata?.agent_index) {
+        } else if (checkIfLastAgent(metadata?.last_agent_id, metadata?.langgraph_node)) {
           sendEvent(res, { event, data });
         } else if (!metadata?.hide_sequential_outputs) {
           sendEvent(res, { event, data });
@@ -191,7 +237,23 @@ function getDefaultHandlers({ res, aggregateContent, toolEndCallback, collectedU
        * @param {GraphRunnableConfig['configurable']} [metadata] The runnable metadata.
        */
       handle: (event, data, metadata) => {
-        if (metadata?.last_agent_index === metadata?.agent_index) {
+        if (checkIfLastAgent(metadata?.last_agent_id, metadata?.langgraph_node)) {
+          sendEvent(res, { event, data });
+        } else if (!metadata?.hide_sequential_outputs) {
+          sendEvent(res, { event, data });
+        }
+        aggregateContent({ event, data });
+      },
+    },
+    [GraphEvents.ON_REASONING_DELTA]: {
+      /**
+       * Handle ON_REASONING_DELTA event.
+       * @param {string} event - The event name.
+       * @param {StreamEventData} data - The event data.
+       * @param {GraphRunnableConfig['configurable']} [metadata] The runnable metadata.
+       */
+      handle: (event, data, metadata) => {
+        if (checkIfLastAgent(metadata?.last_agent_id, metadata?.langgraph_node)) {
           sendEvent(res, { event, data });
         } else if (!metadata?.hide_sequential_outputs) {
           sendEvent(res, { event, data });
@@ -226,45 +288,97 @@ function createToolEndCallback({ req, res, artifactPromises }) {
       return;
     }
 
-    if (imageGenTools.has(output.name)) {
+    if (output.artifact[Tools.file_search]) {
       artifactPromises.push(
         (async () => {
-          const fileMetadata = Object.assign(output.artifact, {
-            messageId: metadata.run_id,
+          const user = req.user;
+          const attachment = await processFileCitations({
+            user,
+            metadata,
+            appConfig: req.config,
+            toolArtifact: output.artifact,
             toolCallId: output.tool_call_id,
-            conversationId: metadata.thread_id,
           });
-          if (!res.headersSent) {
-            return fileMetadata;
-          }
-
-          if (!fileMetadata) {
+          if (!attachment) {
             return null;
           }
-
-          res.write(`event: attachment\ndata: ${JSON.stringify(fileMetadata)}\n\n`);
-          return fileMetadata;
+          if (!res.headersSent) {
+            return attachment;
+          }
+          res.write(`event: attachment\ndata: ${JSON.stringify(attachment)}\n\n`);
+          return attachment;
         })().catch((error) => {
-          logger.error('Error processing code output:', error);
+          logger.error('Error processing file citations:', error);
           return null;
         }),
       );
-      return;
+    }
+
+    // TODO: a lot of duplicated code in createToolEndCallback
+    // we should refactor this to use a helper function in a follow-up PR
+    if (output.artifact[Tools.ui_resources]) {
+      artifactPromises.push(
+        (async () => {
+          const attachment = {
+            type: Tools.ui_resources,
+            messageId: metadata.run_id,
+            toolCallId: output.tool_call_id,
+            conversationId: metadata.thread_id,
+            [Tools.ui_resources]: output.artifact[Tools.ui_resources].data,
+          };
+          if (!res.headersSent) {
+            return attachment;
+          }
+          res.write(`event: attachment\ndata: ${JSON.stringify(attachment)}\n\n`);
+          return attachment;
+        })().catch((error) => {
+          logger.error('Error processing artifact content:', error);
+          return null;
+        }),
+      );
+    }
+
+    if (output.artifact[Tools.web_search]) {
+      artifactPromises.push(
+        (async () => {
+          const attachment = {
+            type: Tools.web_search,
+            messageId: metadata.run_id,
+            toolCallId: output.tool_call_id,
+            conversationId: metadata.thread_id,
+            [Tools.web_search]: { ...output.artifact[Tools.web_search] },
+          };
+          if (!res.headersSent) {
+            return attachment;
+          }
+          res.write(`event: attachment\ndata: ${JSON.stringify(attachment)}\n\n`);
+          return attachment;
+        })().catch((error) => {
+          logger.error('Error processing artifact content:', error);
+          return null;
+        }),
+      );
     }
 
     if (output.artifact.content) {
       /** @type {FormattedContent[]} */
       const content = output.artifact.content;
-      for (const part of content) {
+      for (let i = 0; i < content.length; i++) {
+        const part = content[i];
+        if (!part) {
+          continue;
+        }
         if (part.type !== 'image_url') {
           continue;
         }
         const { url } = part.image_url;
         artifactPromises.push(
           (async () => {
-            const filename = `${output.tool_call_id}-image-${new Date().getTime()}`;
+            const filename = `${output.name}_${output.tool_call_id}_img_${nanoid()}`;
+            const file_id = output.artifact.file_ids?.[i];
             const file = await saveBase64Image(url, {
               req,
+              file_id,
               filename,
               endpoint: metadata.provider,
               context: FileContext.image_generation,

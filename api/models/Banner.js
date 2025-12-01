@@ -1,5 +1,6 @@
-const Banner = require('./schema/banner');
-const logger = require('~/config/winston');
+const { logger } = require('@librechat/data-schemas');
+const { Banner } = require('~/db/models');
+
 /**
  * Retrieves the current active banner.
  * @returns {Promise<Object|null>} The active banner object or null if no active banner is found.

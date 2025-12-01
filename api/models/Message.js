@@ -1,6 +1,7 @@
 const { z } = require('zod');
-const Message = require('./schema/messageSchema');
-const { logger } = require('~/config');
+const { logger } = require('@librechat/data-schemas');
+const { createTempChatExpirationDate } = require('@librechat/api');
+const { Message } = require('~/db/models');
 
 const idSchema = z.string().uuid();
 
@@ -9,7 +10,7 @@ const idSchema = z.string().uuid();
  *
  * @async
  * @function saveMessage
- * @param {Express.Request} req - The request object containing user information.
+ * @param {ServerRequest} req - The request object containing user information.
  * @param {Object} params - The message data object.
  * @param {string} params.endpoint - The endpoint where the message originated.
  * @param {string} params.iconURL - The URL of the sender's icon.
@@ -52,6 +53,27 @@ async function saveMessage(req, params, metadata) {
       user: req.user.id,
       messageId: params.newMessageId || params.messageId,
     };
+
+    if (req?.body?.isTemporary) {
+      try {
+        const appConfig = req.config;
+        update.expiredAt = createTempChatExpirationDate(appConfig?.interfaceConfig);
+      } catch (err) {
+        logger.error('Error creating temporary chat expiration date:', err);
+        logger.info(`---\`saveMessage\` context: ${metadata?.context}`);
+        update.expiredAt = null;
+      }
+    } else {
+      update.expiredAt = null;
+    }
+
+    if (update.tokenCount != null && isNaN(update.tokenCount)) {
+      logger.warn(
+        `Resetting invalid \`tokenCount\` for message \`${params.messageId}\`: ${update.tokenCount}`,
+      );
+      logger.info(`---\`saveMessage\` context: ${metadata?.context}`);
+      update.tokenCount = 0;
+    }
     const message = await Message.findOneAndUpdate(
       { messageId: params.messageId, user: req.user.id },
       update,
@@ -62,7 +84,44 @@ async function saveMessage(req, params, metadata) {
   } catch (err) {
     logger.error('Error saving message:', err);
     logger.info(`---\`saveMessage\` context: ${metadata?.context}`);
-    throw err;
+
+    // Check if this is a duplicate key error (MongoDB error code 11000)
+    if (err.code === 11000 && err.message.includes('duplicate key error')) {
+      // Log the duplicate key error but don't crash the application
+      logger.warn(`Duplicate messageId detected: ${params.messageId}. Continuing execution.`);
+
+      try {
+        // Try to find the existing message with this ID
+        const existingMessage = await Message.findOne({
+          messageId: params.messageId,
+          user: req.user.id,
+        });
+
+        // If we found it, return it
+        if (existingMessage) {
+          return existingMessage.toObject();
+        }
+
+        // If we can't find it (unlikely but possible in race conditions)
+        return {
+          ...params,
+          messageId: params.messageId,
+          user: req.user.id,
+        };
+      } catch (findError) {
+        // If the findOne also fails, log it but don't crash
+        logger.warn(
+          `Could not retrieve existing message with ID ${params.messageId}: ${findError.message}`,
+        );
+        return {
+          ...params,
+          messageId: params.messageId,
+          user: req.user.id,
+        };
+      }
+    }
+
+    throw err; // Re-throw other errors
   }
 }
 
@@ -86,7 +145,6 @@ async function bulkSaveMessages(messages, overrideTimestamp = false) {
         upsert: true,
       },
     }));
-
     const result = await Message.bulkWrite(bulkOps);
     return result;
   } catch (err) {
@@ -201,6 +259,7 @@ async function updateMessage(req, message, metadata) {
       text: updatedMessage.text,
       isCreatedByUser: updatedMessage.isCreatedByUser,
       tokenCount: updatedMessage.tokenCount,
+      feedback: updatedMessage.feedback,
     };
   } catch (err) {
     logger.error('Error updating message:', err);
@@ -287,8 +346,8 @@ async function getMessage({ user, messageId }) {
  *
  * @async
  * @function deleteMessages
- * @param {Object} filter - The filter criteria to find messages to delete.
- * @returns {Promise<Object>} The metadata with count of deleted messages.
+ * @param {import('mongoose').FilterQuery<import('mongoose').Document>} filter - The filter criteria to find messages to delete.
+ * @returns {Promise<import('mongoose').DeleteResult>} The metadata with count of deleted messages.
  * @throws {Error} If there is an error in deleting messages.
  */
 async function deleteMessages(filter) {
@@ -301,7 +360,6 @@ async function deleteMessages(filter) {
 }
 
 module.exports = {
-  Message,
   saveMessage,
   bulkSaveMessages,
   recordMessage,

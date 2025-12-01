@@ -1,26 +1,28 @@
 import { useCallback, useState, useMemo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import debounce from 'lodash/debounce';
-import { TrashIcon, MessageSquare, ArrowUpDown } from 'lucide-react';
+import { useRecoilValue } from 'recoil';
+import { Link } from 'react-router-dom';
+import { TrashIcon, MessageSquare, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import type { SharedLinkItem, SharedLinksListParams } from 'librechat-data-provider';
 import {
   OGDialog,
+  useToastContext,
+  OGDialogTemplate,
   OGDialogTrigger,
   OGDialogContent,
+  useMediaQuery,
   OGDialogHeader,
   OGDialogTitle,
+  DataTable,
+  Spinner,
   Button,
-  TooltipAnchor,
   Label,
-} from '~/components/ui';
+} from '@librechat/client';
 import { useDeleteSharedLinkMutation, useSharedLinksQuery } from '~/data-provider';
-import OGDialogTemplate from '~/components/ui/OGDialogTemplate';
-import { useLocalize, useMediaQuery } from '~/hooks';
-import DataTable from '~/components/ui/DataTable';
+import { useLocalize } from '~/hooks';
 import { NotificationSeverity } from '~/common';
-import { useToastContext } from '~/Providers';
 import { formatDate } from '~/utils';
-import { Spinner } from '~/components/svg';
+import store from '~/store';
 
 const PAGE_SIZE = 25;
 
@@ -36,7 +38,9 @@ export default function SharedLinks() {
   const localize = useLocalize();
   const { showToast } = useToastContext();
   const isSmallScreen = useMediaQuery('(max-width: 768px)');
+  const isSearchEnabled = useRecoilValue(store.search);
   const [queryParams, setQueryParams] = useState<SharedLinksListParams>(DEFAULT_PARAMS);
+  const [deleteRow, setDeleteRow] = useState<SharedLinkItem | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -144,8 +148,6 @@ export default function SharedLinks() {
     await fetchNextPage();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  const [deleteRow, setDeleteRow] = useState<SharedLinkItem | null>(null);
-
   const confirmDelete = useCallback(() => {
     if (deleteRow) {
       handleDelete([deleteRow]);
@@ -157,21 +159,30 @@ export default function SharedLinks() {
     () => [
       {
         accessorKey: 'title',
-        header: ({ column }) => {
+        header: () => {
+          const isSorted = queryParams.sortBy === 'title';
+          const sortDirection = queryParams.sortDirection;
           return (
             <Button
               variant="ghost"
               className="px-2 py-0 text-xs hover:bg-surface-hover sm:px-2 sm:py-2 sm:text-sm"
-              onClick={() => handleSort('title', column.getIsSorted() === 'asc' ? 'desc' : 'asc')}
+              onClick={() =>
+                handleSort('title', isSorted && sortDirection === 'asc' ? 'desc' : 'asc')
+              }
             >
               {localize('com_ui_name')}
-              <ArrowUpDown className="ml-2 h-3 w-4 sm:h-4 sm:w-4" />
+              {isSorted && sortDirection === 'asc' && (
+                <ArrowUp className="ml-2 h-3 w-4 sm:h-4 sm:w-4" />
+              )}
+              {isSorted && sortDirection === 'desc' && (
+                <ArrowDown className="ml-2 h-3 w-4 sm:h-4 sm:w-4" />
+              )}
+              {!isSorted && <ArrowUpDown className="ml-2 h-3 w-4 sm:h-4 sm:w-4" />}
             </Button>
           );
         },
         cell: ({ row }) => {
           const { title, shareId } = row.original;
-
           return (
             <div className="flex items-center gap-2">
               <Link
@@ -193,17 +204,25 @@ export default function SharedLinks() {
       },
       {
         accessorKey: 'createdAt',
-        header: ({ column }) => {
+        header: () => {
+          const isSorted = queryParams.sortBy === 'createdAt';
+          const sortDirection = queryParams.sortDirection;
           return (
             <Button
               variant="ghost"
               className="px-2 py-0 text-xs hover:bg-surface-hover sm:px-2 sm:py-2 sm:text-sm"
               onClick={() =>
-                handleSort('createdAt', column.getIsSorted() === 'asc' ? 'desc' : 'asc')
+                handleSort('createdAt', isSorted && sortDirection === 'asc' ? 'desc' : 'asc')
               }
             >
               {localize('com_ui_date')}
-              <ArrowUpDown className="ml-2 h-3 w-4 sm:h-4 sm:w-4" />
+              {isSorted && sortDirection === 'asc' && (
+                <ArrowUp className="ml-2 h-3 w-4 sm:h-4 sm:w-4" />
+              )}
+              {isSorted && sortDirection === 'desc' && (
+                <ArrowDown className="ml-2 h-3 w-4 sm:h-4 sm:w-4" />
+              )}
+              {!isSorted && <ArrowUpDown className="ml-2 h-3 w-4 sm:h-4 sm:w-4" />}
             </Button>
           );
         },
@@ -226,53 +245,43 @@ export default function SharedLinks() {
         },
         cell: ({ row }) => (
           <div className="flex items-center gap-2">
-            <TooltipAnchor
-              description={localize('com_ui_view_source')}
-              render={
-                <Button
-                  variant="ghost"
-                  className="h-8 w-8 p-0 hover:bg-surface-hover"
-                  onClick={() => {
-                    window.open(`/c/${row.original.conversationId}`, '_blank');
-                  }}
-                  title={localize('com_ui_view_source')}
-                >
-                  <MessageSquare className="size-4" />
-                </Button>
-              }
-            ></TooltipAnchor>
-            <TooltipAnchor
-              description={localize('com_ui_delete')}
-              render={
-                <Button
-                  variant="ghost"
-                  className="h-8 w-8 p-0 hover:bg-surface-hover"
-                  onClick={() => {
-                    setDeleteRow(row.original);
-                    setIsDeleteOpen(true);
-                  }}
-                  title={localize('com_ui_delete')}
-                >
-                  <TrashIcon className="size-4" />
-                </Button>
-              }
-            ></TooltipAnchor>
+            <Button
+              variant="ghost"
+              className="h-8 w-8 p-0 hover:bg-surface-hover"
+              onClick={() => {
+                window.open(`/c/${row.original.conversationId}`, '_blank');
+              }}
+              aria-label={`${localize('com_ui_view_source')} - ${row.original.title || localize('com_ui_untitled')}`}
+            >
+              <MessageSquare className="size-4" aria-hidden="true" />
+            </Button>
+            <Button
+              variant="ghost"
+              className="h-8 w-8 p-0 hover:bg-surface-hover"
+              onClick={() => {
+                setDeleteRow(row.original);
+                setIsDeleteOpen(true);
+              }}
+              aria-label={`${localize('com_ui_delete')} - ${row.original.title || localize('com_ui_untitled')}`}
+            >
+              <TrashIcon className="size-4" aria-hidden="true" />
+            </Button>
           </div>
         ),
       },
     ],
-    [isSmallScreen, localize],
+    [isSmallScreen, localize, queryParams, handleSort],
   );
 
   return (
     <div className="flex items-center justify-between">
-      <div>{localize('com_nav_shared_links')}</div>
+      <Label id="shared-links-label">{localize('com_nav_shared_links')}</Label>
 
       <OGDialog open={isOpen} onOpenChange={setIsOpen}>
         <OGDialogTrigger asChild onClick={() => setIsOpen(true)}>
-          <button className="btn btn-neutral relative">
-            {localize('com_nav_shared_links_manage')}
-          </button>
+          <Button aria-labelledby="shared-links-label" variant="outline">
+            {localize('com_ui_manage')}
+          </Button>
         </OGDialogTrigger>
 
         <OGDialogContent
@@ -293,6 +302,8 @@ export default function SharedLinks() {
             showCheckboxes={false}
             onFilterChange={debouncedFilterChange}
             filterValue={queryParams.search}
+            isLoading={isLoading}
+            enableSearch={isSearchEnabled}
           />
         </OGDialogContent>
       </OGDialog>

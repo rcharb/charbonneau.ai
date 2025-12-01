@@ -1,16 +1,11 @@
+const path = require('path');
 const { EModelEndpoint, AuthKeys } = require('librechat-data-provider');
+const { getGoogleConfig, isEnabled, loadServiceKey } = require('@librechat/api');
 const { getUserKey, checkUserKeyExpiry } = require('~/server/services/UserService');
-const { getLLMConfig } = require('~/server/services/Endpoints/google/llm');
-const { isEnabled } = require('~/server/utils');
 const { GoogleClient } = require('~/app');
 
 const initializeClient = async ({ req, res, endpointOption, overrideModel, optionsOnly }) => {
-  const {
-    GOOGLE_KEY,
-    GOOGLE_REVERSE_PROXY,
-    GOOGLE_AUTH_HEADER,
-    PROXY,
-  } = process.env;
+  const { GOOGLE_KEY, GOOGLE_REVERSE_PROXY, GOOGLE_AUTH_HEADER, PROXY } = process.env;
   const isUserProvided = GOOGLE_KEY === 'user_provided';
   const { key: expiresAt } = req.body;
 
@@ -21,28 +16,45 @@ const initializeClient = async ({ req, res, endpointOption, overrideModel, optio
   }
 
   let serviceKey = {};
-  try {
-    serviceKey = require('~/data/auth.json');
-  } catch (e) {
-    // Do nothing
+
+  /** Check if GOOGLE_KEY is provided at all (including 'user_provided') */
+  const isGoogleKeyProvided =
+    (GOOGLE_KEY && GOOGLE_KEY.trim() !== '') || (isUserProvided && userKey != null);
+
+  if (!isGoogleKeyProvided) {
+    /** Only attempt to load service key if GOOGLE_KEY is not provided */
+    try {
+      const serviceKeyPath =
+        process.env.GOOGLE_SERVICE_KEY_FILE ||
+        path.join(__dirname, '../../../..', 'data', 'auth.json');
+      serviceKey = await loadServiceKey(serviceKeyPath);
+      if (!serviceKey) {
+        serviceKey = {};
+      }
+    } catch (_e) {
+      // Service key loading failed, but that's okay if not required
+      serviceKey = {};
+    }
   }
 
   const credentials = isUserProvided
     ? userKey
     : {
-      [AuthKeys.GOOGLE_SERVICE_KEY]: serviceKey,
-      [AuthKeys.GOOGLE_API_KEY]: GOOGLE_KEY,
-    };
+        [AuthKeys.GOOGLE_SERVICE_KEY]: serviceKey,
+        [AuthKeys.GOOGLE_API_KEY]: GOOGLE_KEY,
+      };
 
   let clientOptions = {};
 
+  const appConfig = req.config;
   /** @type {undefined | TBaseEndpoint} */
-  const allConfig = req.app.locals.all;
+  const allConfig = appConfig.endpoints?.all;
   /** @type {undefined | TBaseEndpoint} */
-  const googleConfig = req.app.locals[EModelEndpoint.google];
+  const googleConfig = appConfig.endpoints?.[EModelEndpoint.google];
 
   if (googleConfig) {
     clientOptions.streamRate = googleConfig.streamRate;
+    clientOptions.titleModel = googleConfig.titleModel;
   }
 
   if (allConfig) {
@@ -62,14 +74,14 @@ const initializeClient = async ({ req, res, endpointOption, overrideModel, optio
   if (optionsOnly) {
     clientOptions = Object.assign(
       {
-        modelOptions: endpointOption.model_parameters,
+        modelOptions: endpointOption?.model_parameters ?? {},
       },
       clientOptions,
     );
     if (overrideModel) {
       clientOptions.modelOptions.model = overrideModel;
     }
-    return getLLMConfig(credentials, clientOptions);
+    return getGoogleConfig(credentials, clientOptions);
   }
 
   const client = new GoogleClient(credentials, clientOptions);

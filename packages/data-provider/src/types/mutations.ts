@@ -1,18 +1,18 @@
 import * as types from '../types';
 import * as r from '../roles';
+import * as p from '../permissions';
 import {
   Tools,
   Assistant,
   AssistantCreateParams,
   AssistantUpdateParams,
-  ActionMetadata,
   FunctionTool,
   AssistantDocument,
-  Action,
   Agent,
   AgentCreateParams,
   AgentUpdateParams,
 } from './assistants';
+import { Action, ActionMetadata } from './agents';
 
 export type MutationOptions<
   Response,
@@ -48,8 +48,6 @@ export type PresetDeleteResponse = {
 export type UpdatePresetOptions = MutationOptions<types.TPreset, types.TPreset>;
 
 export type DeletePresetOptions = MutationOptions<PresetDeleteResponse, types.TPreset | undefined>;
-
-export type LogoutOptions = MutationOptions<unknown, undefined>;
 
 /* Assistant mutations */
 
@@ -111,7 +109,6 @@ export type DeleteActionOptions = MutationOptions<void, DeleteActionVariables>;
 export type AgentAvatarVariables = {
   agent_id: string;
   formData: FormData;
-  postCreation?: boolean;
 };
 
 export type UpdateAgentActionVariables = {
@@ -128,6 +125,14 @@ export type CreateAgentMutationOptions = MutationOptions<Agent, AgentCreateParam
 export type UpdateAgentVariables = {
   agent_id: string;
   data: AgentUpdateParams;
+};
+
+export type DuplicateVersionError = Error & {
+  statusCode?: number;
+  details?: {
+    duplicateVersion?: unknown;
+    versionIndex?: number;
+  };
 };
 
 export type UpdateAgentMutationOptions = MutationOptions<Agent, UpdateAgentVariables>;
@@ -160,9 +165,21 @@ export type DeleteAgentActionVariables = {
 
 export type DeleteAgentActionOptions = MutationOptions<void, DeleteAgentActionVariables>;
 
+export type RevertAgentVersionVariables = {
+  agent_id: string;
+  version_index: number;
+};
+
+export type RevertAgentVersionOptions = MutationOptions<Agent, RevertAgentVersionVariables>;
+
 export type DeleteConversationOptions = MutationOptions<
   types.TDeleteConversationResponse,
   types.TDeleteConversationRequest
+>;
+
+export type ArchiveConversationOptions = MutationOptions<
+  types.TArchiveConversationResponse,
+  types.TArchiveConversationRequest
 >;
 
 export type DuplicateConvoOptions = MutationOptions<
@@ -253,9 +270,10 @@ export type UpdatePermVars<T> = {
   updates: Partial<T>;
 };
 
-export type UpdatePromptPermVars = UpdatePermVars<r.TPromptPermissions>;
-
-export type UpdateAgentPermVars = UpdatePermVars<r.TAgentPermissions>;
+export type UpdatePromptPermVars = UpdatePermVars<p.TPromptPermissions>;
+export type UpdateMemoryPermVars = UpdatePermVars<p.TMemoryPermissions>;
+export type UpdateAgentPermVars = UpdatePermVars<p.TAgentPermissions>;
+export type UpdatePeoplePickerPermVars = UpdatePermVars<p.TPeoplePickerPermissions>;
 
 export type UpdatePermResponse = r.TRole;
 
@@ -266,9 +284,32 @@ export type UpdatePromptPermOptions = MutationOptions<
   types.TError | null | undefined
 >;
 
+export type UpdateMemoryPermOptions = MutationOptions<
+  UpdatePermResponse,
+  UpdateMemoryPermVars,
+  unknown,
+  types.TError | null | undefined
+>;
+
 export type UpdateAgentPermOptions = MutationOptions<
   UpdatePermResponse,
   UpdateAgentPermVars,
+  unknown,
+  types.TError | null | undefined
+>;
+
+export type UpdatePeoplePickerPermOptions = MutationOptions<
+  UpdatePermResponse,
+  UpdatePeoplePickerPermVars,
+  unknown,
+  types.TError | null | undefined
+>;
+
+export type UpdateMarketplacePermVars = UpdatePermVars<p.TMarketplacePermissions>;
+
+export type UpdateMarketplacePermOptions = MutationOptions<
+  UpdatePermResponse,
+  UpdateMarketplacePermVars,
   unknown,
   types.TError | null | undefined
 >;
@@ -331,3 +372,20 @@ export type EditArtifactOptions = MutationOptions<
   unknown,
   Error
 >;
+
+export type TLogoutResponse = {
+  message: string;
+  redirect?: string;
+};
+
+export type LogoutOptions = MutationOptions<TLogoutResponse, undefined>;
+
+export interface AssistantInitialize {
+  message: string;
+  error?: string;
+}
+
+export interface CancelMCPOAuthResponse {
+  success: boolean;
+  message: string;
+}

@@ -1,7 +1,9 @@
 const path = require('path');
 const { v4 } = require('uuid');
 const axios = require('axios');
+const { logger } = require('@librechat/data-schemas');
 const { getCodeBaseURL } = require('@librechat/agents');
+const { logAxiosError, getBasePath } = require('@librechat/api');
 const {
   Tools,
   FileContext,
@@ -9,10 +11,10 @@ const {
   imageExtRegex,
   EToolResources,
 } = require('librechat-data-provider');
+const { filterFilesByAgentAccess } = require('~/server/services/Files/permissions');
 const { getStrategyFunctions } = require('~/server/services/Files/strategies');
 const { convertImage } = require('~/server/services/Files/images/convert');
 const { createFile, getFiles, updateFile } = require('~/models/File');
-const { logger } = require('~/config');
 
 /**
  * Process OpenAI image files, convert to target format, save and return file metadata.
@@ -36,13 +38,15 @@ const processCodeOutput = async ({
   messageId,
   session_id,
 }) => {
+  const appConfig = req.config;
   const currentDate = new Date();
   const baseURL = getCodeBaseURL();
+  const basePath = getBasePath();
   const fileExt = path.extname(name);
   if (!fileExt || !imageExtRegex.test(name)) {
     return {
       filename: name,
-      filepath: `/api/files/code/download/${session_id}/${id}`,
+      filepath: `${basePath}/api/files/code/download/${session_id}/${id}`,
       /** Note: expires 24 hours after creation */
       expiresAt: currentDate.getTime() + 86400000,
       conversationId,
@@ -75,17 +79,20 @@ const processCodeOutput = async ({
       filename: name,
       conversationId,
       user: req.user.id,
-      type: `image/${req.app.locals.imageOutputType}`,
+      type: `image/${appConfig.imageOutputType}`,
       createdAt: formattedDate,
       updatedAt: formattedDate,
-      source: req.app.locals.fileStrategy,
+      source: appConfig.fileStrategy,
       context: FileContext.execute_code,
     };
     createFile(file, true);
     /** Note: `messageId` & `toolCallId` are not part of file DB schema; message object records associated file ID */
     return Object.assign(file, { messageId, toolCallId });
   } catch (error) {
-    logger.error('Error downloading file:', error);
+    logAxiosError({
+      message: 'Error downloading code environment file',
+      error,
+    });
   }
 };
 
@@ -135,7 +142,10 @@ async function getSessionInfo(fileIdentifier, apiKey) {
 
     return response.data.find((file) => file.name.startsWith(path))?.lastModified;
   } catch (error) {
-    logger.error(`Error fetching session info: ${error.message}`, error);
+    logAxiosError({
+      message: `Error fetching session info: ${error.message}`,
+      error,
+    });
     return null;
   }
 }
@@ -145,6 +155,7 @@ async function getSessionInfo(fileIdentifier, apiKey) {
  * @param {Object} options
  * @param {ServerRequest} options.req
  * @param {Agent['tool_resources']} options.tool_resources
+ * @param {string} [options.agentId] - The agent ID for file access control
  * @param {string} apiKey
  * @returns {Promise<{
  * files: Array<{ id: string; session_id: string; name: string }>,
@@ -152,11 +163,28 @@ async function getSessionInfo(fileIdentifier, apiKey) {
  * }>}
  */
 const primeFiles = async (options, apiKey) => {
-  const { tool_resources } = options;
+  const { tool_resources, req, agentId } = options;
   const file_ids = tool_resources?.[EToolResources.execute_code]?.file_ids ?? [];
   const agentResourceIds = new Set(file_ids);
   const resourceFiles = tool_resources?.[EToolResources.execute_code]?.files ?? [];
-  const dbFiles = ((await getFiles({ file_id: { $in: file_ids } })) ?? []).concat(resourceFiles);
+
+  // Get all files first
+  const allFiles = (await getFiles({ file_id: { $in: file_ids } }, null, { text: 0 })) ?? [];
+
+  // Filter by access if user and agent are provided
+  let dbFiles;
+  if (req?.user?.id && agentId) {
+    dbFiles = await filterFilesByAgentAccess({
+      files: allFiles,
+      userId: req.user.id,
+      role: req.user.role,
+      agentId,
+    });
+  } else {
+    dbFiles = allFiles;
+  }
+
+  dbFiles = dbFiles.concat(resourceFiles);
 
   const files = [];
   const sessions = new Map();
@@ -202,7 +230,7 @@ const primeFiles = async (options, apiKey) => {
           const { handleFileUpload: uploadCodeEnvFile } = getStrategyFunctions(
             FileSources.execute_code,
           );
-          const stream = await getDownloadStream(file.filepath);
+          const stream = await getDownloadStream(options.req, file.filepath);
           const fileIdentifier = await uploadCodeEnvFile({
             req: options.req,
             stream,
@@ -210,7 +238,17 @@ const primeFiles = async (options, apiKey) => {
             entity_id: queryParams.entity_id,
             apiKey,
           });
-          await updateFile({ file_id: file.file_id, metadata: { fileIdentifier } });
+
+          // Preserve existing metadata when adding fileIdentifier
+          const updatedMetadata = {
+            ...file.metadata, // Preserve existing metadata (like S3 storage info)
+            fileIdentifier, // Add fileIdentifier
+          };
+
+          await updateFile({
+            file_id: file.file_id,
+            metadata: updatedMetadata,
+          });
           sessions.set(session_id, true);
           pushFile();
         } catch (error) {

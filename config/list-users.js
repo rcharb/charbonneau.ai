@@ -1,7 +1,8 @@
 const path = require('path');
 require('module-alias')({ base: path.resolve(__dirname, '..', 'api') });
+const mongoose = require('mongoose');
+const { User } = require('@librechat/data-schemas').createModels(mongoose);
 const connect = require('./connect');
-const User = require('../api/models/User');
 
 const listUsers = async () => {
   try {
@@ -11,6 +12,7 @@ const listUsers = async () => {
     console.log('\nUser List:');
     console.log('----------------------------------------');
     users.forEach((user) => {
+      console.log(`ID: ${user._id.toString()}`);
       console.log(`Email: ${user.email}`);
       console.log(`Username: ${user.username || 'N/A'}`);
       console.log(`Name: ${user.name || 'N/A'}`);

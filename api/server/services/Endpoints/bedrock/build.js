@@ -1,12 +1,12 @@
-const { removeNullishValues, bedrockInputParser } = require('librechat-data-provider');
+const { removeNullishValues } = require('librechat-data-provider');
 const generateArtifactsPrompt = require('~/app/clients/prompts/artifacts');
-const { logger } = require('~/config');
 
 const buildOptions = (endpoint, parsedBody) => {
   const {
     modelLabel: name,
     promptPrefix,
     maxContextTokens,
+    fileTokenLimit,
     resendFiles = true,
     imageDetail,
     iconURL,
@@ -15,12 +15,6 @@ const buildOptions = (endpoint, parsedBody) => {
     artifacts,
     ...model_parameters
   } = parsedBody;
-  let parsedParams = model_parameters;
-  try {
-    parsedParams = bedrockInputParser.parse(model_parameters);
-  } catch (error) {
-    logger.warn('Failed to parse bedrock input', error);
-  }
   const endpointOption = removeNullishValues({
     endpoint,
     name,
@@ -31,7 +25,8 @@ const buildOptions = (endpoint, parsedBody) => {
     spec,
     promptPrefix,
     maxContextTokens,
-    model_parameters: parsedParams,
+    fileTokenLimit,
+    model_parameters,
   });
 
   if (typeof artifacts === 'string') {

@@ -1,7 +1,15 @@
 const { Constants } = require('librechat-data-provider');
 const { initializeFakeClient } = require('./FakeClient');
 
-jest.mock('~/lib/db/connectDb');
+jest.mock('~/db/connect');
+jest.mock('~/server/services/Config', () => ({
+  getAppConfig: jest.fn().mockResolvedValue({
+    // Default app config for tests
+    paths: { uploads: '/tmp' },
+    fileStrategy: 'local',
+    memory: { disabled: false },
+  }),
+}));
 jest.mock('~/models', () => ({
   User: jest.fn(),
   Key: jest.fn(),
@@ -30,8 +38,12 @@ jest.mock('~/models', () => ({
   updateFileUsage: jest.fn(),
 }));
 
-jest.mock('@langchain/openai', () => {
+const { getConvo, saveConvo } = require('~/models');
+
+jest.mock('@librechat/agents', () => {
+  const { Providers } = jest.requireActual('@librechat/agents');
   return {
+    Providers,
     ChatOpenAI: jest.fn().mockImplementation(() => {
       return {};
     }),
@@ -50,7 +62,7 @@ const messageHistory = [
   {
     role: 'user',
     isCreatedByUser: true,
-    text: 'What\'s up',
+    text: "What's up",
     messageId: '3',
     parentMessageId: '2',
   },
@@ -162,7 +174,7 @@ describe('BaseClient', () => {
     const result = await TestClient.getMessagesWithinTokenLimit({ messages });
 
     expect(result.context).toEqual(expectedContext);
-    expect(result.summaryIndex).toEqual(expectedIndex);
+    expect(result.messagesToRefine.length - 1).toEqual(expectedIndex);
     expect(result.remainingContextTokens).toBe(expectedRemainingContextTokens);
     expect(result.messagesToRefine).toEqual(expectedMessagesToRefine);
   });
@@ -198,7 +210,7 @@ describe('BaseClient', () => {
     const result = await TestClient.getMessagesWithinTokenLimit({ messages });
 
     expect(result.context).toEqual(expectedContext);
-    expect(result.summaryIndex).toEqual(expectedIndex);
+    expect(result.messagesToRefine.length - 1).toEqual(expectedIndex);
     expect(result.remainingContextTokens).toBe(expectedRemainingContextTokens);
     expect(result.messagesToRefine).toEqual(expectedMessagesToRefine);
   });
@@ -418,6 +430,46 @@ describe('BaseClient', () => {
       expect(response).toEqual(expectedResult);
     });
 
+    test('should replace responseMessageId with new UUID when isRegenerate is true and messageId ends with underscore', async () => {
+      const mockCrypto = require('crypto');
+      const newUUID = 'new-uuid-1234';
+      jest.spyOn(mockCrypto, 'randomUUID').mockReturnValue(newUUID);
+
+      const opts = {
+        isRegenerate: true,
+        responseMessageId: 'existing-message-id_',
+      };
+
+      await TestClient.setMessageOptions(opts);
+
+      expect(TestClient.responseMessageId).toBe(newUUID);
+      expect(TestClient.responseMessageId).not.toBe('existing-message-id_');
+
+      mockCrypto.randomUUID.mockRestore();
+    });
+
+    test('should not replace responseMessageId when isRegenerate is false', async () => {
+      const opts = {
+        isRegenerate: false,
+        responseMessageId: 'existing-message-id_',
+      };
+
+      await TestClient.setMessageOptions(opts);
+
+      expect(TestClient.responseMessageId).toBe('existing-message-id_');
+    });
+
+    test('should not replace responseMessageId when it does not end with underscore', async () => {
+      const opts = {
+        isRegenerate: true,
+        responseMessageId: 'existing-message-id',
+      };
+
+      await TestClient.setMessageOptions(opts);
+
+      expect(TestClient.responseMessageId).toBe('existing-message-id');
+    });
+
     test('sendMessage should work with provided conversationId and parentMessageId', async () => {
       const userMessage = 'Second message in the conversation';
       const opts = {
@@ -454,7 +506,7 @@ describe('BaseClient', () => {
 
       const chatMessages2 = await TestClient.loadHistory(conversationId, '3');
       expect(TestClient.currentMessages).toHaveLength(3);
-      expect(chatMessages2[chatMessages2.length - 1].text).toEqual('What\'s up');
+      expect(chatMessages2[chatMessages2.length - 1].text).toEqual("What's up");
     });
 
     /* Most of the new sendMessage logic revolving around edited/continued AI messages
@@ -535,15 +587,18 @@ describe('BaseClient', () => {
       expect(onStart).toHaveBeenCalledWith(
         expect.objectContaining({ text: 'Hello, world!' }),
         expect.any(String),
+        /** `isNewConvo` */
+        true,
       );
     });
 
     test('saveMessageToDatabase is called with the correct arguments', async () => {
       const saveOptions = TestClient.getSaveOptions();
-      const user = {}; // Mock user
+      const user = {};
       const opts = { user };
+      const saveSpy = jest.spyOn(TestClient, 'saveMessageToDatabase');
       await TestClient.sendMessage('Hello, world!', opts);
-      expect(TestClient.saveMessageToDatabase).toHaveBeenCalledWith(
+      expect(saveSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           sender: expect.any(String),
           text: expect.any(String),
@@ -555,6 +610,157 @@ describe('BaseClient', () => {
         saveOptions,
         user,
       );
+    });
+
+    test('should handle existing conversation when getConvo retrieves one', async () => {
+      const existingConvo = {
+        conversationId: 'existing-convo-id',
+        endpoint: 'openai',
+        endpointType: 'openai',
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'user', content: 'Existing message 1' },
+          { role: 'assistant', content: 'Existing response 1' },
+        ],
+        temperature: 1,
+      };
+
+      const { temperature: _temp, ...newConvo } = existingConvo;
+
+      const user = {
+        id: 'user-id',
+      };
+
+      getConvo.mockResolvedValue(existingConvo);
+      saveConvo.mockResolvedValue(newConvo);
+
+      TestClient = initializeFakeClient(
+        apiKey,
+        {
+          ...options,
+          req: {
+            user,
+          },
+        },
+        [],
+      );
+
+      const saveSpy = jest.spyOn(TestClient, 'saveMessageToDatabase');
+
+      const newMessage = 'New message in existing conversation';
+      const response = await TestClient.sendMessage(newMessage, {
+        user,
+        conversationId: existingConvo.conversationId,
+      });
+
+      expect(getConvo).toHaveBeenCalledWith(user.id, existingConvo.conversationId);
+      expect(TestClient.conversationId).toBe(existingConvo.conversationId);
+      expect(response.conversationId).toBe(existingConvo.conversationId);
+      expect(TestClient.fetchedConvo).toBe(true);
+
+      expect(saveSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          conversationId: existingConvo.conversationId,
+          text: newMessage,
+        }),
+        expect.any(Object),
+        expect.any(Object),
+      );
+
+      expect(saveConvo).toHaveBeenCalledTimes(2);
+      expect(saveConvo).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          conversationId: existingConvo.conversationId,
+        }),
+        expect.objectContaining({
+          context: 'api/app/clients/BaseClient.js - saveMessageToDatabase #saveConvo',
+          unsetFields: {
+            temperature: 1,
+          },
+        }),
+      );
+
+      await TestClient.sendMessage('Another message', {
+        conversationId: existingConvo.conversationId,
+      });
+      expect(getConvo).toHaveBeenCalledTimes(1);
+    });
+
+    test('should correctly handle existing conversation and unset fields appropriately', async () => {
+      const existingConvo = {
+        conversationId: 'existing-convo-id',
+        endpoint: 'openai',
+        endpointType: 'openai',
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'user', content: 'Existing message 1' },
+          { role: 'assistant', content: 'Existing response 1' },
+        ],
+        title: 'Existing Conversation',
+        someExistingField: 'existingValue',
+        anotherExistingField: 'anotherValue',
+        temperature: 0.7,
+        modelLabel: 'GPT-3.5',
+      };
+
+      getConvo.mockResolvedValue(existingConvo);
+      saveConvo.mockResolvedValue(existingConvo);
+
+      TestClient = initializeFakeClient(
+        apiKey,
+        {
+          ...options,
+          modelOptions: {
+            model: 'gpt-4',
+            temperature: 0.5,
+          },
+        },
+        [],
+      );
+
+      const newMessage = 'New message in existing conversation';
+      await TestClient.sendMessage(newMessage, {
+        conversationId: existingConvo.conversationId,
+      });
+
+      expect(saveConvo).toHaveBeenCalledTimes(2);
+
+      const saveConvoCall = saveConvo.mock.calls[0];
+      const [, savedFields, saveOptions] = saveConvoCall;
+
+      // Instead of checking all excludedKeys, we'll just check specific fields
+      // that we know should be excluded
+      expect(savedFields).not.toHaveProperty('messages');
+      expect(savedFields).not.toHaveProperty('title');
+
+      // Only check that someExistingField is in unsetFields
+      expect(saveOptions.unsetFields).toHaveProperty('someExistingField', 1);
+
+      // Mock saveConvo to return the expected fields
+      saveConvo.mockImplementation((req, fields) => {
+        return Promise.resolve({
+          ...fields,
+          endpoint: 'openai',
+          endpointType: 'openai',
+          model: 'gpt-4',
+          temperature: 0.5,
+        });
+      });
+
+      // Only check the conversationId since that's the only field we can be sure about
+      expect(savedFields).toHaveProperty('conversationId', 'existing-convo-id');
+
+      expect(TestClient.fetchedConvo).toBe(true);
+
+      await TestClient.sendMessage('Another message', {
+        conversationId: existingConvo.conversationId,
+      });
+
+      expect(getConvo).toHaveBeenCalledTimes(1);
+
+      const secondSaveConvoCall = saveConvo.mock.calls[1];
+      expect(secondSaveConvoCall[2]).toHaveProperty('unsetFields', {});
     });
 
     test('sendCompletion is called with the correct arguments', async () => {

@@ -6,46 +6,9 @@ import type {
   TValidatedAzureConfig,
   TAzureConfigValidationResult,
 } from '../src/config';
-import { errorsToString, extractEnvVariable, envVarRegex } from '../src/parsers';
+import { extractEnvVariable, envVarRegex } from '../src/utils';
 import { azureGroupConfigsSchema } from '../src/config';
-
-export const deprecatedAzureVariables = [
-  /* "related to" precedes description text */
-  { key: 'AZURE_OPENAI_DEFAULT_MODEL', description: 'setting a default model' },
-  { key: 'AZURE_OPENAI_MODELS', description: 'setting models' },
-  {
-    key: 'AZURE_USE_MODEL_AS_DEPLOYMENT_NAME',
-    description: 'using model names as deployment names',
-  },
-  { key: 'AZURE_API_KEY', description: 'setting a single Azure API key' },
-  { key: 'AZURE_OPENAI_API_INSTANCE_NAME', description: 'setting a single Azure instance name' },
-  {
-    key: 'AZURE_OPENAI_API_DEPLOYMENT_NAME',
-    description: 'setting a single Azure deployment name',
-  },
-  { key: 'AZURE_OPENAI_API_VERSION', description: 'setting a single Azure API version' },
-  {
-    key: 'AZURE_OPENAI_API_COMPLETIONS_DEPLOYMENT_NAME',
-    description: 'setting a single Azure completions deployment name',
-  },
-  {
-    key: 'AZURE_OPENAI_API_EMBEDDINGS_DEPLOYMENT_NAME',
-    description: 'setting a single Azure embeddings deployment name',
-  },
-  {
-    key: 'PLUGINS_USE_AZURE',
-    description: 'using Azure for Plugins',
-  },
-];
-
-export const conflictingAzureVariables = [
-  {
-    key: 'INSTANCE_NAME',
-  },
-  {
-    key: 'DEPLOYMENT_NAME',
-  },
-];
+import { errorsToString } from '../src/parsers';
 
 export function validateAzureGroups(configs: TAzureGroups): TAzureConfigValidationResult {
   let isValid = true;
@@ -238,13 +201,13 @@ export function mapModelToAzureConfig({
   const { deploymentName = '', version = '' } =
     typeof modelDetails === 'object'
       ? {
-        deploymentName: modelDetails.deploymentName ?? groupConfig.deploymentName,
-        version: modelDetails.version ?? groupConfig.version,
-      }
+          deploymentName: modelDetails.deploymentName ?? groupConfig.deploymentName,
+          version: modelDetails.version ?? groupConfig.version,
+        }
       : {
-        deploymentName: groupConfig.deploymentName,
-        version: groupConfig.version,
-      };
+          deploymentName: groupConfig.deploymentName,
+          version: groupConfig.version,
+        };
 
   if (!deploymentName || !version) {
     throw new Error(
@@ -334,13 +297,13 @@ export function mapGroupToAzureConfig({
   const { deploymentName = '', version = '' } =
     typeof modelDetails === 'object'
       ? {
-        deploymentName: modelDetails.deploymentName ?? groupConfig.deploymentName,
-        version: modelDetails.version ?? groupConfig.version,
-      }
+          deploymentName: modelDetails.deploymentName ?? groupConfig.deploymentName,
+          version: modelDetails.version ?? groupConfig.version,
+        }
       : {
-        deploymentName: groupConfig.deploymentName,
-        version: groupConfig.version,
-      };
+          deploymentName: groupConfig.deploymentName,
+          version: groupConfig.version,
+        };
 
   if (!deploymentName || !version) {
     throw new Error(

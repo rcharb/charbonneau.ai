@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRecoilState } from 'recoil';
+import { useToastContext } from '@librechat/client';
 import { useSpeechToTextMutation } from '~/data-provider';
 import useGetAudioSettings from './useGetAudioSettings';
-import { useToastContext } from '~/Providers';
 import store from '~/store';
 
 const useSpeechToTextExternal = (
@@ -21,9 +21,11 @@ const useSpeechToTextExternal = (
   const [isListening, setIsListening] = useState(false);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [isRequestBeingMade, setIsRequestBeingMade] = useState(false);
+  const [audioMimeType, setAudioMimeType] = useState<string>(() => getBestSupportedMimeType());
 
   const [minDecibels] = useRecoilState(store.decibelValue);
   const [autoSendText] = useRecoilState(store.autoSendText);
+  const [languageSTT] = useRecoilState<string>(store.languageSTT);
   const [speechToText] = useRecoilState<boolean>(store.speechToText);
   const [autoTranscribeAudio] = useRecoilState<boolean>(store.autoTranscribeAudio);
 
@@ -48,6 +50,46 @@ const useSpeechToTextExternal = (
     },
   });
 
+  function getBestSupportedMimeType() {
+    const types = [
+      'audio/webm',
+      'audio/webm;codecs=opus',
+      'audio/mp4',
+      'audio/ogg;codecs=opus',
+      'audio/ogg',
+      'audio/wav',
+    ];
+
+    for (const type of types) {
+      if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)) {
+        return type;
+      }
+    }
+
+    if (typeof navigator !== 'undefined') {
+      const ua = navigator.userAgent.toLowerCase();
+      if (ua.indexOf('safari') !== -1 && ua.indexOf('chrome') === -1) {
+        return 'audio/mp4';
+      } else if (ua.indexOf('firefox') !== -1) {
+        return 'audio/ogg';
+      }
+    }
+
+    return 'audio/webm';
+  }
+
+  const getFileExtension = (mimeType: string) => {
+    if (mimeType.includes('mp4')) {
+      return 'm4a';
+    } else if (mimeType.includes('ogg')) {
+      return 'ogg';
+    } else if (mimeType.includes('wav')) {
+      return 'wav';
+    } else {
+      return 'webm';
+    }
+  };
+
   const cleanup = () => {
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.removeEventListener('dataavailable', (event: BlobEvent) => {
@@ -66,19 +108,23 @@ const useSpeechToTextExternal = (
       });
       setPermission(true);
       audioStream.current = streamData ?? null;
-    } catch (err) {
+    } catch {
       setPermission(false);
     }
   };
 
   const handleStop = () => {
     if (audioChunks.length > 0) {
-      const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+      const audioBlob = new Blob(audioChunks, { type: audioMimeType });
+      const fileExtension = getFileExtension(audioMimeType);
 
       setAudioChunks([]);
 
       const formData = new FormData();
-      formData.append('audio', audioBlob, 'audio.wav');
+      formData.append('audio', audioBlob, `audio.${fileExtension}`);
+      if (languageSTT) {
+        formData.append('language', languageSTT);
+      }
       setIsRequestBeingMade(true);
       cleanup();
       processAudio(formData);
@@ -133,7 +179,12 @@ const useSpeechToTextExternal = (
     if (audioStream.current) {
       try {
         setAudioChunks([]);
-        mediaRecorderRef.current = new MediaRecorder(audioStream.current);
+        const bestMimeType = getBestSupportedMimeType();
+        setAudioMimeType(bestMimeType);
+
+        mediaRecorderRef.current = new MediaRecorder(audioStream.current, {
+          mimeType: audioMimeType,
+        });
         mediaRecorderRef.current.addEventListener('dataavailable', (event: BlobEvent) => {
           audioChunks.push(event.data);
         });

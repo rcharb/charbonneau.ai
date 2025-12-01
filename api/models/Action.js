@@ -1,7 +1,4 @@
-const mongoose = require('mongoose');
-const actionSchema = require('./schema/action');
-
-const Action = mongoose.model('action', actionSchema);
+const { Action } = require('~/db/models');
 
 /**
  * Update an action with new data without overwriting existing properties,

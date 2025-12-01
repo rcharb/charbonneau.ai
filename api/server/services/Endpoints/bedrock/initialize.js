@@ -1,3 +1,4 @@
+const { getModelMaxTokens } = require('@librechat/api');
 const { createContentAggregator } = require('@librechat/agents');
 const {
   EModelEndpoint,
@@ -7,7 +8,6 @@ const {
 const { getDefaultHandlers } = require('~/server/controllers/agents/callbacks');
 const getOptions = require('~/server/services/Endpoints/bedrock/options');
 const AgentClient = require('~/server/controllers/agents/client');
-const { getModelMaxTokens } = require('~/utils');
 
 const initializeClient = async ({ req, res, endpointOption }) => {
   if (!endpointOption) {
@@ -23,8 +23,9 @@ const initializeClient = async ({ req, res, endpointOption }) => {
   const agent = {
     id: EModelEndpoint.bedrock,
     name: endpointOption.name,
-    instructions: endpointOption.promptPrefix,
     provider: EModelEndpoint.bedrock,
+    endpoint: EModelEndpoint.bedrock,
+    instructions: endpointOption.promptPrefix,
     model: endpointOption.model_parameters.model,
     model_parameters: endpointOption.model_parameters,
   };
@@ -54,6 +55,7 @@ const initializeClient = async ({ req, res, endpointOption }) => {
 
   const client = new AgentClient({
     req,
+    res,
     agent,
     sender,
     // tools,

@@ -2,28 +2,25 @@ const {
   CacheKeys,
   SystemRoles,
   roleDefaults,
-  PermissionTypes,
+  permissionsSchema,
   removeNullishValues,
-  agentPermissionsSchema,
-  promptPermissionsSchema,
-  bookmarkPermissionsSchema,
-  multiConvoPermissionsSchema,
 } = require('librechat-data-provider');
+const { logger } = require('@librechat/data-schemas');
 const getLogStores = require('~/cache/getLogStores');
-const Role = require('~/models/schema/roleSchema');
-const { logger } = require('~/config');
+const { Role } = require('~/db/models');
 
 /**
  * Retrieve a role by name and convert the found role document to a plain object.
- * If the role with the given name doesn't exist and the name is a system defined role, create it and return the lean version.
+ * If the role with the given name doesn't exist and the name is a system defined role,
+ * create it and return the lean version.
  *
  * @param {string} roleName - The name of the role to find or create.
  * @param {string|string[]} [fieldsToSelect] - The fields to include or exclude in the returned document.
- * @returns {Promise<Object>} A plain object representing the role document.
+ * @returns {Promise<IRole>} Role document.
  */
 const getRoleByName = async function (roleName, fieldsToSelect = null) {
+  const cache = getLogStores(CacheKeys.ROLES);
   try {
-    const cache = getLogStores(CacheKeys.ROLES);
     const cachedRole = await cache.get(roleName);
     if (cachedRole) {
       return cachedRole;
@@ -35,8 +32,7 @@ const getRoleByName = async function (roleName, fieldsToSelect = null) {
     let role = await query.lean().exec();
 
     if (!role && SystemRoles[roleName]) {
-      role = roleDefaults[roleName];
-      role = await new Role(role).save();
+      role = await new Role(roleDefaults[roleName]).save();
       await cache.set(roleName, role);
       return role.toObject();
     }
@@ -55,8 +51,8 @@ const getRoleByName = async function (roleName, fieldsToSelect = null) {
  * @returns {Promise<TRole>} Updated role document.
  */
 const updateRoleByName = async function (roleName, updates) {
+  const cache = getLogStores(CacheKeys.ROLES);
   try {
-    const cache = getLogStores(CacheKeys.ROLES);
     const role = await Role.findOneAndUpdate(
       { name: roleName },
       { $set: updates },
@@ -72,56 +68,98 @@ const updateRoleByName = async function (roleName, updates) {
   }
 };
 
-const permissionSchemas = {
-  [PermissionTypes.AGENTS]: agentPermissionsSchema,
-  [PermissionTypes.PROMPTS]: promptPermissionsSchema,
-  [PermissionTypes.BOOKMARKS]: bookmarkPermissionsSchema,
-  [PermissionTypes.MULTI_CONVO]: multiConvoPermissionsSchema,
-};
-
 /**
  * Updates access permissions for a specific role and multiple permission types.
- * @param {SystemRoles} roleName - The role to update.
+ * @param {string} roleName - The role to update.
  * @param {Object.<PermissionTypes, Object.<Permissions, boolean>>} permissionsUpdate - Permissions to update and their values.
+ * @param {IRole} [roleData] - Optional role data to use instead of fetching from the database.
  */
-async function updateAccessPermissions(roleName, permissionsUpdate) {
+async function updateAccessPermissions(roleName, permissionsUpdate, roleData) {
+  // Filter and clean the permission updates based on our schema definition.
   const updates = {};
   for (const [permissionType, permissions] of Object.entries(permissionsUpdate)) {
-    if (permissionSchemas[permissionType]) {
+    if (permissionsSchema.shape && permissionsSchema.shape[permissionType]) {
       updates[permissionType] = removeNullishValues(permissions);
     }
   }
-
-  if (Object.keys(updates).length === 0) {
+  if (!Object.keys(updates).length) {
     return;
   }
 
   try {
-    const role = await getRoleByName(roleName);
+    const role = roleData ?? (await getRoleByName(roleName));
     if (!role) {
       return;
     }
 
-    const updatedPermissions = {};
+    const currentPermissions = role.permissions || {};
+    const updatedPermissions = { ...currentPermissions };
     let hasChanges = false;
 
+    const unsetFields = {};
+    const permissionTypes = Object.keys(permissionsSchema.shape || {});
+    for (const permType of permissionTypes) {
+      if (role[permType] && typeof role[permType] === 'object') {
+        logger.info(
+          `Migrating '${roleName}' role from old schema: found '${permType}' at top level`,
+        );
+
+        updatedPermissions[permType] = {
+          ...updatedPermissions[permType],
+          ...role[permType],
+        };
+
+        unsetFields[permType] = 1;
+        hasChanges = true;
+      }
+    }
+
     for (const [permissionType, permissions] of Object.entries(updates)) {
-      const currentPermissions = role[permissionType] || {};
-      updatedPermissions[permissionType] = { ...currentPermissions };
+      const currentTypePermissions = currentPermissions[permissionType] || {};
+      updatedPermissions[permissionType] = { ...currentTypePermissions };
 
       for (const [permission, value] of Object.entries(permissions)) {
-        if (currentPermissions[permission] !== value) {
+        if (currentTypePermissions[permission] !== value) {
           updatedPermissions[permissionType][permission] = value;
           hasChanges = true;
           logger.info(
-            `Updating '${roleName}' role ${permissionType} '${permission}' permission from ${currentPermissions[permission]} to: ${value}`,
+            `Updating '${roleName}' role permission '${permissionType}' '${permission}' from ${currentTypePermissions[permission]} to: ${value}`,
           );
         }
       }
     }
 
     if (hasChanges) {
-      await updateRoleByName(roleName, updatedPermissions);
+      const updateObj = { permissions: updatedPermissions };
+
+      if (Object.keys(unsetFields).length > 0) {
+        logger.info(
+          `Unsetting old schema fields for '${roleName}' role: ${Object.keys(unsetFields).join(', ')}`,
+        );
+
+        try {
+          await Role.updateOne(
+            { name: roleName },
+            {
+              $set: updateObj,
+              $unset: unsetFields,
+            },
+          );
+
+          const cache = getLogStores(CacheKeys.ROLES);
+          const updatedRole = await Role.findOne({ name: roleName }).select('-__v').lean().exec();
+          await cache.set(roleName, updatedRole);
+
+          logger.info(`Updated role '${roleName}' and removed old schema fields`);
+        } catch (updateError) {
+          logger.error(`Error during role migration update: ${updateError.message}`);
+          throw updateError;
+        }
+      } else {
+        // Standard update if no migration needed
+        await updateRoleByName(roleName, updateObj);
+      }
+
       logger.info(`Updated '${roleName}' role permissions`);
     } else {
       logger.info(`No changes needed for '${roleName}' role permissions`);
@@ -132,40 +170,87 @@ async function updateAccessPermissions(roleName, permissionsUpdate) {
 }
 
 /**
- * Initialize default roles in the system.
- * Creates the default roles (ADMIN, USER) if they don't exist in the database.
- * Updates existing roles with new permission types if they're missing.
+ * Migrates roles from old schema to new schema structure.
+ * This can be called directly to fix existing roles.
  *
- * @returns {Promise<void>}
+ * @param {string} [roleName] - Optional specific role to migrate. If not provided, migrates all roles.
+ * @returns {Promise<number>} Number of roles migrated.
  */
-const initializeRoles = async function () {
-  const defaultRoles = [SystemRoles.ADMIN, SystemRoles.USER];
-
-  for (const roleName of defaultRoles) {
-    let role = await Role.findOne({ name: roleName });
-
-    if (!role) {
-      // Create new role if it doesn't exist
-      role = new Role(roleDefaults[roleName]);
+const migrateRoleSchema = async function (roleName) {
+  try {
+    // Get roles to migrate
+    let roles;
+    if (roleName) {
+      const role = await Role.findOne({ name: roleName });
+      roles = role ? [role] : [];
     } else {
-      // Add missing permission types
-      let isUpdated = false;
-      for (const permType of Object.values(PermissionTypes)) {
-        if (!role[permType]) {
-          role[permType] = roleDefaults[roleName][permType];
-          isUpdated = true;
+      roles = await Role.find({});
+    }
+
+    logger.info(`Migrating ${roles.length} roles to new schema structure`);
+    let migratedCount = 0;
+
+    for (const role of roles) {
+      const permissionTypes = Object.keys(permissionsSchema.shape || {});
+      const unsetFields = {};
+      let hasOldSchema = false;
+
+      // Check for old schema fields
+      for (const permType of permissionTypes) {
+        if (role[permType] && typeof role[permType] === 'object') {
+          hasOldSchema = true;
+
+          // Ensure permissions object exists
+          role.permissions = role.permissions || {};
+
+          // Migrate permissions from old location to new
+          role.permissions[permType] = {
+            ...role.permissions[permType],
+            ...role[permType],
+          };
+
+          // Mark field for removal
+          unsetFields[permType] = 1;
         }
       }
-      if (isUpdated) {
-        await role.save();
+
+      if (hasOldSchema) {
+        try {
+          logger.info(`Migrating role '${role.name}' from old schema structure`);
+
+          // Simple update operation
+          await Role.updateOne(
+            { _id: role._id },
+            {
+              $set: { permissions: role.permissions },
+              $unset: unsetFields,
+            },
+          );
+
+          // Refresh cache
+          const cache = getLogStores(CacheKeys.ROLES);
+          const updatedRole = await Role.findById(role._id).lean().exec();
+          await cache.set(role.name, updatedRole);
+
+          migratedCount++;
+          logger.info(`Migrated role '${role.name}'`);
+        } catch (error) {
+          logger.error(`Failed to migrate role '${role.name}': ${error.message}`);
+        }
       }
     }
-    await role.save();
+
+    logger.info(`Migration complete: ${migratedCount} roles migrated`);
+    return migratedCount;
+  } catch (error) {
+    logger.error(`Role schema migration failed: ${error.message}`);
+    throw error;
   }
 };
+
 module.exports = {
   getRoleByName,
-  initializeRoles,
   updateRoleByName,
+  migrateRoleSchema,
   updateAccessPermissions,
 };
