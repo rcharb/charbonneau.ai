@@ -16,3 +16,4 @@ process.env.ALLOW_EMAIL_LOGIN = 'true';
 // This can be overridden in individual tests if needed
 jest.setTimeout(30000);
 process.env.OPENAI_API_KEY = 'test';
+process.env.STRIPE_SECRET_KEY = 'test';
