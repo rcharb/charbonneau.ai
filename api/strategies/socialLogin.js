@@ -47,9 +47,7 @@ const socialLogin =
       } else if (existingUser) {
         // Link social provider to existing account if not already linked
         if (!existingUser[providerKey]) {
-          logger.info(
-            `[${provider}Login] Linking ${provider} account to existing user: ${email}`
-          );
+          logger.info(`[${provider}Login] Linking ${provider} account to existing user: ${email}`);
           await updateUser(existingUser._id, { [providerKey]: id });
           existingUser[providerKey] = id;
         }
