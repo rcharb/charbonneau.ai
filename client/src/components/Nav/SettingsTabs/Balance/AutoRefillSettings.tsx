@@ -1,4 +1,5 @@
 import React from 'react';
+import { RefreshCw, Calendar, Clock, Coins } from 'lucide-react';
 import { Label, InfoHoverCard, ESide } from '@librechat/client';
 import { TranslationKeys, useLocalize } from '~/hooks';
 
@@ -7,6 +8,7 @@ interface AutoRefillSettingsProps {
   refillAmount: number;
   refillIntervalUnit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
   refillIntervalValue: number;
+  subscriptionPeriodEnd?: Date | string | null;
 }
 
 /**
@@ -97,18 +99,45 @@ function getNextFutureInterval(
   return new Date(nextRefillTime);
 }
 
+/**
+ * Format number with K/M suffix for large values
+ */
+const formatTokenAmount = (amount: number): string => {
+  if (amount >= 1000000) {
+    return `${(amount / 1000000).toFixed(1)}M`;
+  }
+  if (amount >= 1000) {
+    return `${(amount / 1000).toFixed(0)}K`;
+  }
+  return amount.toString();
+};
+
 const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
   lastRefill,
   refillAmount,
   refillIntervalUnit,
   refillIntervalValue,
+  subscriptionPeriodEnd,
 }) => {
   const localize = useLocalize();
 
   const lastRefillDate = lastRefill ? new Date(lastRefill) : null;
-  const nextRefill = lastRefillDate
-    ? getNextFutureInterval(lastRefillDate, refillIntervalValue, refillIntervalUnit)
-    : null;
+
+  // Parse subscription period end date
+  let periodEndDate: Date | null = null;
+  if (subscriptionPeriodEnd) {
+    periodEndDate =
+      typeof subscriptionPeriodEnd === 'string'
+        ? new Date(subscriptionPeriodEnd)
+        : subscriptionPeriodEnd;
+  }
+
+  // For subscription-based refills, the next refill aligns with subscription period
+  const nextRefill =
+    periodEndDate ||
+    (lastRefillDate
+      ? getNextFutureInterval(lastRefillDate, refillIntervalValue, refillIntervalUnit)
+      : null);
 
   // Return the localized unit based on singular/plural values
   const getLocalizedIntervalUnit = (
@@ -141,35 +170,101 @@ const AutoRefillSettings: React.FC<AutoRefillSettingsProps> = ({
     return localize(key);
   };
 
+  // Format date for display
+  const formatDate = (date: Date | null): string => {
+    if (!date) return '-';
+    return date.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  // Calculate days until next refill
+  const getDaysUntilRefill = (): number | null => {
+    if (!nextRefill) return null;
+    const now = new Date();
+    const diffTime = nextRefill.getTime() - now.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  const daysUntilRefill = getDaysUntilRefill();
+
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium">{localize('com_nav_balance_auto_refill_settings')}</h3>
-      <div className="mb-1 flex justify-between text-sm">
-        <span>{localize('com_nav_balance_last_refill')}</span>
-        <span>{lastRefillDate ? lastRefillDate.toLocaleString() : '-'}</span>
+    <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800/50">
+      {/* Header */}
+      <div className="mb-4 flex items-center gap-2">
+        <RefreshCw className="h-5 w-5 text-green-500" />
+        <h3 className="font-medium text-gray-900 dark:text-white">
+          {localize('com_nav_balance_auto_refill_settings')}
+        </h3>
       </div>
-      <div className="mb-1 flex justify-between text-sm">
-        <span>{localize('com_nav_balance_refill_amount')}</span>
-        <span>{refillAmount !== undefined ? refillAmount : '-'}</span>
-      </div>
-      <div className="mb-1 flex justify-between text-sm">
-        <span>{localize('com_nav_balance_interval')}</span>
-        <span>
-          {localize('com_nav_balance_every')} {refillIntervalValue}{' '}
-          {getLocalizedIntervalUnit(refillIntervalValue, refillIntervalUnit)}
-        </span>
-      </div>
-      <div className="flex items-center justify-between">
-        {/* Left Section: Label */}
-        <div className="flex items-center space-x-2">
-          <Label className="font-light">{localize('com_nav_balance_next_refill')}</Label>
-          <InfoHoverCard side={ESide.Bottom} text={localize('com_nav_balance_next_refill_info')} />
+
+      {/* Settings Grid */}
+      <div className="space-y-3">
+        {/* Last Refill */}
+        <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
+          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+            <Clock className="h-4 w-4" />
+            <span className="text-sm">{localize('com_nav_balance_last_refill')}</span>
+          </div>
+          <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+            {formatDate(lastRefillDate)}
+          </span>
         </div>
 
-        {/* Right Section: tokenCredits Value */}
-        <span className="text-sm font-medium text-gray-800 dark:text-gray-200" role="note">
-          {nextRefill ? nextRefill.toLocaleString() : '-'}
-        </span>
+        {/* Refill Amount */}
+        <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
+          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+            <Coins className="h-4 w-4" />
+            <span className="text-sm">{localize('com_nav_balance_refill_amount')}</span>
+          </div>
+          <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+            +{formatTokenAmount(refillAmount)}
+          </span>
+        </div>
+
+        {/* Refill Interval */}
+        <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
+          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+            <Calendar className="h-4 w-4" />
+            <span className="text-sm">{localize('com_nav_balance_interval')}</span>
+          </div>
+          <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+            {localize('com_nav_balance_every')} {refillIntervalValue}{' '}
+            {getLocalizedIntervalUnit(refillIntervalValue, refillIntervalUnit)}
+          </span>
+        </div>
+
+        {/* Next Refill - Highlighted */}
+        <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-900/20">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 text-green-700 dark:text-green-400">
+              <RefreshCw className="h-4 w-4" />
+              <Label className="text-sm font-medium">
+                {localize('com_nav_balance_next_refill')}
+              </Label>
+            </div>
+            <InfoHoverCard
+              side={ESide.Bottom}
+              text={localize('com_nav_balance_next_refill_info')}
+            />
+          </div>
+          <div className="text-right">
+            <span className="text-sm font-bold text-green-700 dark:text-green-400">
+              {formatDate(nextRefill)}
+            </span>
+            {daysUntilRefill !== null && daysUntilRefill > 0 && (
+              <span className="ml-2 text-xs text-green-600 dark:text-green-500">
+                ({daysUntilRefill}{' '}
+                {daysUntilRefill === 1
+                  ? localize('com_nav_balance_day')
+                  : localize('com_nav_balance_days')}
+                )
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

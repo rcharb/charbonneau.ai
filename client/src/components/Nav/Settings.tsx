@@ -245,7 +245,7 @@ export default function Settings({ open, onOpenChange }: TDialogProps) {
                     </Tabs.Content>
                     {startupConfig?.balance?.enabled && (
                       <Tabs.Content value={SettingsTabValues.BALANCE} tabIndex={-1}>
-                        <Balance />
+                        <Balance onClose={() => onOpenChange(false)} />
                       </Tabs.Content>
                     )}
                     <Tabs.Content value={SettingsTabValues.ACCOUNT} tabIndex={-1}>
