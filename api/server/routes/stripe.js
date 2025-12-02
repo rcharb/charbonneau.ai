@@ -3,6 +3,8 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2025-11-17.clover',
 });
 const { requireJwtAuth } = require('~/server/middleware');
+const { Balance } = require('~/db/models');
+const { findUser, updateUser } = require('~/models');
 const { logger } = require('~/config');
 
 const router = express.Router();
@@ -12,6 +14,31 @@ const router = express.Router();
 const getPriceId = (plan, period) => {
   const key = `STRIPE_PRICE_${plan.toUpperCase()}_${period.toUpperCase()}`;
   return process.env[key];
+};
+
+// Token amounts per plan (configurable via environment variables)
+const getTokensForPlan = (plan) => {
+  const tokenAmounts = {
+    standard: parseInt(process.env.SUBSCRIPTION_STANDARD_TOKENS || '300000', 10),
+    plus: parseInt(process.env.SUBSCRIPTION_PLUS_TOKENS || '750000', 10),
+  };
+  return tokenAmounts[plan] || 0;
+};
+
+// Helper to get plan from price ID
+const getPlanFromPriceId = (priceId) => {
+  const standardMonthly = process.env.STRIPE_PRICE_STANDARD_MONTHLY;
+  const standardYearly = process.env.STRIPE_PRICE_STANDARD_YEARLY;
+  const plusMonthly = process.env.STRIPE_PRICE_PLUS_MONTHLY;
+  const plusYearly = process.env.STRIPE_PRICE_PLUS_YEARLY;
+
+  if (priceId === standardMonthly || priceId === standardYearly) {
+    return 'standard';
+  }
+  if (priceId === plusMonthly || priceId === plusYearly) {
+    return 'plus';
+  }
+  return null;
 };
 
 router.post('/create-setup-intent', requireJwtAuth, async (req, res) => {
@@ -245,6 +272,50 @@ router.post('/create-subscription', requireJwtAuth, async (req, res) => {
       }
     }
 
+    // Update user with Stripe customer and subscription info
+    await updateUser(req.user.id, {
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscription.id,
+      subscriptionPlan: plan,
+      subscriptionStatus: finalSubscriptionStatus,
+      subscriptionPeriodEnd: new Date(subscription.current_period_end * 1000),
+    });
+
+    const tokenAmount = getTokensForPlan(plan);
+
+    // Always update balance record when subscription is created
+    // Even if status is 'incomplete', we set up the subscription info
+    const balanceUpdate = {
+      $set: {
+        balanceType: 'subscription',
+        subscriptionPlan: plan,
+        subscriptionPeriodStart: new Date(subscription.current_period_start * 1000),
+        subscriptionPeriodEnd: new Date(subscription.current_period_end * 1000),
+        autoRefillEnabled: true,
+        refillIntervalValue: 1,
+        refillIntervalUnit: 'months',
+        refillAmount: tokenAmount,
+        lastRefill: new Date(),
+      },
+    };
+
+    // If subscription is active immediately, also add tokens
+    if (finalSubscriptionStatus === 'active') {
+      balanceUpdate.$inc = { tokenCredits: tokenAmount, subscriptionCredits: tokenAmount };
+      logger.info(
+        `Subscription created for user ${req.user.id}: added ${tokenAmount} tokens (${plan} plan)`,
+      );
+    } else {
+      logger.info(
+        `Subscription created for user ${req.user.id} with status: ${finalSubscriptionStatus} (${plan} plan)`,
+      );
+    }
+
+    await Balance.findOneAndUpdate({ user: req.user.id }, balanceUpdate, {
+      upsert: true,
+      new: true,
+    });
+
     res.json({
       subscriptionId: subscription.id,
       clientSecret: clientSecret,
@@ -278,5 +349,329 @@ router.get('/subscription-status', requireJwtAuth, async (req, res) => {
     });
   }
 });
+
+// Get current user's subscription info
+router.get('/my-subscription', requireJwtAuth, async (req, res) => {
+  try {
+    const user = await findUser({ _id: req.user.id });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // If user has a Stripe subscription ID, fetch current status
+    if (user.stripeSubscriptionId) {
+      try {
+        const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+        return res.json({
+          hasSubscription: true,
+          subscriptionPlan: user.subscriptionPlan,
+          subscriptionStatus: subscription.status,
+          currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        });
+      } catch (stripeError) {
+        // Subscription may have been deleted in Stripe
+        logger.warn('Could not retrieve subscription from Stripe:', stripeError.message);
+      }
+    }
+
+    res.json({
+      hasSubscription: false,
+      subscriptionPlan: null,
+      subscriptionStatus: null,
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+    });
+  } catch (error) {
+    logger.error('Error fetching subscription:', error);
+    res.status(500).json({ error: 'Failed to fetch subscription info' });
+  }
+});
+
+// Cancel subscription at period end
+router.post('/cancel-subscription', requireJwtAuth, async (req, res) => {
+  try {
+    const user = await findUser({ _id: req.user.id });
+
+    if (!user || !user.stripeSubscriptionId) {
+      return res.status(400).json({ error: 'No active subscription found' });
+    }
+
+    const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
+      cancel_at_period_end: true,
+    });
+
+    res.json({
+      success: true,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+    });
+  } catch (error) {
+    logger.error('Error canceling subscription:', error);
+    res.status(500).json({ error: 'Failed to cancel subscription' });
+  }
+});
+
+// Reactivate subscription (if canceled but not yet expired)
+router.post('/reactivate-subscription', requireJwtAuth, async (req, res) => {
+  try {
+    const user = await findUser({ _id: req.user.id });
+
+    if (!user || !user.stripeSubscriptionId) {
+      return res.status(400).json({ error: 'No subscription found' });
+    }
+
+    const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
+      cancel_at_period_end: false,
+    });
+
+    res.json({
+      success: true,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      status: subscription.status,
+    });
+  } catch (error) {
+    logger.error('Error reactivating subscription:', error);
+    res.status(500).json({ error: 'Failed to reactivate subscription' });
+  }
+});
+
+/**
+ * Stripe Webhook Handler
+ * Handles subscription lifecycle events for automatic balance refills
+ * Note: express.raw() middleware is applied in server/index.js for this route
+ */
+router.post('/webhook', async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!webhookSecret) {
+    logger.error('STRIPE_WEBHOOK_SECRET is not configured');
+    return res.status(500).json({ error: 'Webhook secret not configured' });
+  }
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+  } catch (err) {
+    logger.error('Webhook signature verification failed:', err.message);
+    return res.status(400).json({ error: `Webhook Error: ${err.message}` });
+  }
+
+  logger.info(`Stripe webhook received: ${event.type}`);
+
+  try {
+    switch (event.type) {
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated': {
+        await handleSubscriptionUpdate(event.data.object);
+        break;
+      }
+
+      case 'customer.subscription.deleted': {
+        await handleSubscriptionDeleted(event.data.object);
+        break;
+      }
+
+      case 'invoice.payment_succeeded': {
+        await handleInvoicePaymentSucceeded(event.data.object);
+        break;
+      }
+
+      case 'invoice.payment_failed': {
+        await handleInvoicePaymentFailed(event.data.object);
+        break;
+      }
+
+      default:
+        logger.info(`Unhandled event type: ${event.type}`);
+    }
+
+    res.json({ received: true });
+  } catch (error) {
+    logger.error('Error processing webhook:', error);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+});
+
+/**
+ * Handle subscription created/updated events
+ */
+async function handleSubscriptionUpdate(subscription) {
+  const customerId = subscription.customer;
+
+  // Find user by Stripe customer ID
+  const user = await findUser({ stripeCustomerId: customerId });
+  if (!user) {
+    // Try to find by metadata
+    const customer = await stripe.customers.retrieve(customerId);
+    const userId = customer.metadata?.userId;
+    if (userId) {
+      const userById = await findUser({ _id: userId });
+      if (userById) {
+        // Update user with stripeCustomerId for future lookups
+        await updateUser(userId, { stripeCustomerId: customerId });
+        await processSubscriptionUpdate(userById._id.toString(), subscription);
+        return;
+      }
+    }
+    logger.warn(`No user found for Stripe customer: ${customerId}`);
+    return;
+  }
+
+  await processSubscriptionUpdate(user._id.toString(), subscription);
+}
+
+/**
+ * Process subscription update for a user
+ */
+async function processSubscriptionUpdate(userId, subscription) {
+  const priceId = subscription.items?.data?.[0]?.price?.id;
+  const plan = getPlanFromPriceId(priceId) || subscription.metadata?.plan;
+
+  const updateData = {
+    stripeSubscriptionId: subscription.id,
+    subscriptionStatus: subscription.status,
+    subscriptionPlan: plan,
+    subscriptionPeriodEnd: new Date(subscription.current_period_end * 1000),
+  };
+
+  await updateUser(userId, updateData);
+
+  // Update balance record with subscription info
+  if (subscription.status === 'active') {
+    await Balance.findOneAndUpdate(
+      { user: userId },
+      {
+        $set: {
+          balanceType: 'subscription',
+          subscriptionPlan: plan,
+          subscriptionPeriodStart: new Date(subscription.current_period_start * 1000),
+          subscriptionPeriodEnd: new Date(subscription.current_period_end * 1000),
+          autoRefillEnabled: true,
+          refillIntervalValue: 1,
+          refillIntervalUnit: 'months',
+          refillAmount: getTokensForPlan(plan),
+        },
+      },
+      { upsert: true },
+    );
+  }
+
+  logger.info(`Updated subscription for user ${userId}: ${subscription.status}, plan: ${plan}`);
+}
+
+/**
+ * Handle subscription deleted/canceled
+ */
+async function handleSubscriptionDeleted(subscription) {
+  const customerId = subscription.customer;
+
+  const user = await findUser({ stripeCustomerId: customerId });
+  if (!user) {
+    logger.warn(`No user found for deleted subscription customer: ${customerId}`);
+    return;
+  }
+
+  // Update user subscription status
+  await updateUser(user._id.toString(), {
+    subscriptionStatus: 'canceled',
+    subscriptionPeriodEnd: new Date(subscription.current_period_end * 1000),
+  });
+
+  // Stop auto-refill but keep current balance
+  await Balance.findOneAndUpdate(
+    { user: user._id },
+    {
+      $set: {
+        autoRefillEnabled: false,
+        // Keep balanceType as 'subscription' so they can use remaining credits
+      },
+    },
+  );
+
+  logger.info(`Subscription canceled for user ${user._id}`);
+}
+
+/**
+ * Handle successful invoice payment (subscription renewal)
+ */
+async function handleInvoicePaymentSucceeded(invoice) {
+  // Only process subscription invoices
+  if (!invoice.subscription) {
+    return;
+  }
+
+  const customerId = invoice.customer;
+  const user = await findUser({ stripeCustomerId: customerId });
+
+  if (!user) {
+    logger.warn(`No user found for invoice payment customer: ${customerId}`);
+    return;
+  }
+
+  // Fetch subscription to get plan details
+  const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
+  const priceId = subscription.items?.data?.[0]?.price?.id;
+  const plan = getPlanFromPriceId(priceId) || subscription.metadata?.plan;
+
+  if (!plan) {
+    logger.warn(`Could not determine plan for subscription: ${invoice.subscription}`);
+    return;
+  }
+
+  const tokenAmount = getTokensForPlan(plan);
+
+  // Check if this is the first invoice (new subscription) or a renewal
+  const isRenewal = invoice.billing_reason === 'subscription_cycle';
+  const isNewSubscription = invoice.billing_reason === 'subscription_create';
+
+  if (isRenewal || isNewSubscription) {
+    // Refill balance with subscription tokens
+    await Balance.findOneAndUpdate(
+      { user: user._id },
+      {
+        $inc: { tokenCredits: tokenAmount, subscriptionCredits: tokenAmount },
+        $set: {
+          balanceType: 'subscription',
+          subscriptionPlan: plan,
+          subscriptionPeriodStart: new Date(subscription.current_period_start * 1000),
+          subscriptionPeriodEnd: new Date(subscription.current_period_end * 1000),
+          lastRefill: new Date(),
+        },
+      },
+      { upsert: true },
+    );
+
+    logger.info(
+      `${isRenewal ? 'Renewed' : 'Created'} subscription for user ${user._id}: added ${tokenAmount} tokens (${plan} plan)`,
+    );
+  }
+}
+
+/**
+ * Handle failed invoice payment
+ */
+async function handleInvoicePaymentFailed(invoice) {
+  if (!invoice.subscription) {
+    return;
+  }
+
+  const customerId = invoice.customer;
+  const user = await findUser({ stripeCustomerId: customerId });
+
+  if (!user) {
+    logger.warn(`No user found for failed invoice payment customer: ${customerId}`);
+    return;
+  }
+
+  // Update subscription status to past_due
+  await updateUser(user._id.toString(), {
+    subscriptionStatus: 'past_due',
+  });
+
+  logger.warn(`Payment failed for user ${user._id}, subscription marked as past_due`);
+}
 
 module.exports = router;

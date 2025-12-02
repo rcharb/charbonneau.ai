@@ -2,7 +2,7 @@ import { useState, memo } from 'react';
 import { useRecoilState } from 'recoil';
 import * as Select from '@ariakit/react/select';
 import { useNavigate } from 'react-router-dom';
-import { FileText, LogOut, CreditCard } from 'lucide-react';
+import { FileText, LogOut, CreditCard, Sparkles, AlertCircle } from 'lucide-react';
 import { LinkIcon, GearIcon, DropdownMenuSeparator, Avatar } from '@librechat/client';
 import { useGetStartupConfig, useGetUserBalance } from '~/data-provider';
 import FilesView from '~/components/Chat/Input/Files/FilesView';
@@ -55,9 +55,34 @@ function AccountSettings() {
         <DropdownMenuSeparator />
         {startupConfig?.balance?.enabled === true && balanceQuery.data != null && (
           <>
-            <div className="text-token-text-secondary ml-3 mr-2 py-2 text-sm" role="note">
-              {localize('com_nav_balance')}:{' '}
-              {new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}
+            <div className="ml-3 mr-2 py-2" role="note">
+              <div className="flex items-center justify-between">
+                <div className="text-token-text-secondary text-sm">
+                  {localize('com_nav_balance')}:{' '}
+                  {new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {balanceQuery.data.hasActiveSubscription ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                      <Sparkles className="h-3 w-3" />
+                      {balanceQuery.data.subscriptionPlan === 'plus'
+                        ? localize('com_nav_plan_plus')
+                        : localize('com_nav_plan_standard')}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                      {localize('com_nav_trial')}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {/* Trial Depleted Warning */}
+              {balanceQuery.data.isTrialDepleted && (
+                <div className="mt-1 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                  <AlertCircle className="h-3 w-3" />
+                  {localize('com_nav_trial_depleted')}
+                </div>
+              )}
             </div>
             <DropdownMenuSeparator />
           </>

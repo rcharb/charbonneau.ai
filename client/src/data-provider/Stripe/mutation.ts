@@ -66,3 +66,51 @@ export const useCreateSubscriptionMutation = (): UseMutationResult<
     },
   });
 };
+
+export interface CancelSubscriptionResponse {
+  success: boolean;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: string;
+}
+
+export interface ReactivateSubscriptionResponse {
+  success: boolean;
+  cancelAtPeriodEnd: boolean;
+  status: string;
+}
+
+/**
+ * Cancel subscription at period end
+ */
+export const useCancelSubscriptionMutation = (): UseMutationResult<
+  CancelSubscriptionResponse,
+  Error,
+  void
+> => {
+  return useMutation({
+    mutationFn: async () => {
+      const response = await axios.post<CancelSubscriptionResponse>(
+        '/api/stripe/cancel-subscription',
+      );
+      return response.data;
+    },
+  });
+};
+
+/**
+ * Reactivate a canceled subscription
+ */
+export const useReactivateSubscriptionMutation = (): UseMutationResult<
+  ReactivateSubscriptionResponse,
+  Error,
+  void
+> => {
+  return useMutation({
+    mutationFn: async () => {
+      const response = await axios.post<ReactivateSubscriptionResponse>(
+        '/api/stripe/reactivate-subscription',
+      );
+      return response.data;
+    },
+  });
+};

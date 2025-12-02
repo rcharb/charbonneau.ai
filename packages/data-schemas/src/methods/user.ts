@@ -53,15 +53,22 @@ export function createUserMethods(mongoose: typeof import('mongoose')) {
     // If balance is enabled, create or update a balance record for the user
     if (balanceConfig?.enabled && balanceConfig?.startBalance) {
       const update: {
-        $inc: { tokenCredits: number };
+        $inc: { tokenCredits: number; trialCredits?: number };
         $set?: {
-          autoRefillEnabled: boolean;
-          refillIntervalValue: number;
-          refillIntervalUnit: string;
-          refillAmount: number;
+          balanceType?: string;
+          autoRefillEnabled?: boolean;
+          refillIntervalValue?: number;
+          refillIntervalUnit?: string;
+          refillAmount?: number;
         };
       } = {
-        $inc: { tokenCredits: balanceConfig.startBalance },
+        $inc: {
+          tokenCredits: balanceConfig.startBalance,
+          trialCredits: balanceConfig.startBalance,
+        },
+        $set: {
+          balanceType: 'trial', // New users start with trial balance
+        },
       };
 
       if (
@@ -71,6 +78,7 @@ export function createUserMethods(mongoose: typeof import('mongoose')) {
         balanceConfig.refillAmount != null
       ) {
         update.$set = {
+          ...update.$set,
           autoRefillEnabled: true,
           refillIntervalValue: balanceConfig.refillIntervalValue,
           refillIntervalUnit: balanceConfig.refillIntervalUnit,

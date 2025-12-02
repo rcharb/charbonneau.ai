@@ -13,6 +13,35 @@ const balanceSchema = new Schema<t.IBalance>({
     type: Number,
     default: 0,
   },
+  // Balance type: 'trial' for new users, 'subscription' for paying users
+  balanceType: {
+    type: String,
+    enum: ['trial', 'subscription'],
+    default: 'trial',
+  },
+  // Separate tracking for analytics
+  trialCredits: {
+    type: Number,
+    default: 0,
+  },
+  subscriptionCredits: {
+    type: Number,
+    default: 0,
+  },
+  // Subscription plan info
+  subscriptionPlan: {
+    type: String,
+    enum: ['standard', 'plus', null],
+    default: null,
+  },
+  subscriptionPeriodStart: {
+    type: Date,
+    default: null,
+  },
+  subscriptionPeriodEnd: {
+    type: Date,
+    default: null,
+  },
   // Automatic refill settings
   autoRefillEnabled: {
     type: Boolean,

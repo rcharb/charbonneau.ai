@@ -83,11 +83,10 @@ export default function PlanSummary({
         <a href="/terms" className="underline hover:text-gray-700 dark:hover:text-gray-300">
           {localize('com_subscription_terms_of_service')}
         </a>{' '}
-        and{' '}
+        {localize('com_subscription_and')}{' '}
         <a href="/privacy" className="underline hover:text-gray-700 dark:hover:text-gray-300">
           {localize('com_subscription_privacy_policy')}
         </a>
-        .
       </p>
     </div>
   );

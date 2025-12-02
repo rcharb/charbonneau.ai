@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, useStripe, useElements } from '@stripe/react-stripe-js';
-import { Zap, Paperclip, Image as ImageIcon, FileText } from 'lucide-react';
+import { Zap, Paperclip, Image as ImageIcon, FileText, ChevronLeft } from 'lucide-react';
 import { PaymentForm, PlanSummary } from '~/components/Subscription';
 import { Spinner } from '@librechat/client';
 import useAuthRedirect from './useAuthRedirect';
@@ -23,11 +23,10 @@ interface PlanDetails {
 
 interface CheckoutFormProps {
   planDetails: PlanDetails;
-  clientSecret: string;
   setupIntentId: string;
 }
 
-function CheckoutForm({ planDetails, clientSecret, setupIntentId }: CheckoutFormProps) {
+function CheckoutForm({ planDetails, setupIntentId }: CheckoutFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const navigate = useNavigate();
@@ -90,11 +89,11 @@ function CheckoutForm({ planDetails, clientSecret, setupIntentId }: CheckoutForm
                     setError(paymentError.message || 'Payment failed');
                     setIsProcessing(false);
                   } else {
-                    navigate('/?subscription=success');
+                    navigate('/c/new?subscription=success');
                   }
                 });
             } else {
-              navigate('/?subscription=success');
+              navigate('/c/new?subscription=success');
             }
           },
           onError: (err: any) => {
@@ -149,12 +148,16 @@ function CheckoutForm({ planDetails, clientSecret, setupIntentId }: CheckoutForm
   const dueToday = 0; // Can be adjusted for promotions
 
   return (
-    <div className="min-h-screen overflow-scroll bg-white p-4 dark:bg-gray-900">
+    <div className="min-h-screen overflow-scroll bg-white p-8 dark:bg-gray-900">
       <div className="mx-auto max-w-4xl">
-        <h1 className="mb-8 text-2xl font-semibold text-gray-900 dark:text-white">
-          {localize('com_subscription_configure_plan')}
-        </h1>
-
+        <div className="relative -ml-10 mb-8 flex items-center gap-3">
+          <button type="button" onClick={() => navigate('/choose-plan')}>
+            <ChevronLeft className="h-8 w-8" />
+          </button>
+          <h1 className="text-3xl font-semibold text-gray-900 dark:text-white">
+            {localize('com_subscription_configure_plan')}
+          </h1>
+        </div>
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           {/* Left Column: Payment Method & Billing Address */}
           <div>
@@ -292,11 +295,7 @@ function CheckoutWrapper({ planId }: { planId: string }) {
         },
       }}
     >
-      <CheckoutForm
-        planDetails={planDetails}
-        clientSecret={clientSecret as string}
-        setupIntentId={setupIntentId}
-      />
+      <CheckoutForm planDetails={planDetails} setupIntentId={setupIntentId} />
     </Elements>
   );
 }
