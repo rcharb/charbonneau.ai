@@ -1,7 +1,8 @@
 import { useState, memo } from 'react';
 import { useRecoilState } from 'recoil';
 import * as Select from '@ariakit/react/select';
-import { FileText, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { FileText, LogOut, CreditCard } from 'lucide-react';
 import { LinkIcon, GearIcon, DropdownMenuSeparator, Avatar } from '@librechat/client';
 import { useGetStartupConfig, useGetUserBalance } from '~/data-provider';
 import FilesView from '~/components/Chat/Input/Files/FilesView';
@@ -11,6 +12,7 @@ import Settings from './Settings';
 import store from '~/store';
 
 function AccountSettings() {
+  const navigate = useNavigate();
   const localize = useLocalize();
   const { user, isAuthenticated, logout } = useAuthContext();
   const { data: startupConfig } = useGetStartupConfig();
@@ -78,6 +80,14 @@ function AccountSettings() {
             {localize('com_nav_help_faq')}
           </Select.SelectItem>
         )}
+        <Select.SelectItem
+          value=""
+          onClick={() => navigate('/choose-plan')}
+          className="select-item text-sm"
+        >
+          <CreditCard className="icon-md" aria-hidden="true" />
+          {localize('com_nav_manage_subscription')}
+        </Select.SelectItem>
         <Select.SelectItem
           value=""
           onClick={() => setShowSettings(true)}
