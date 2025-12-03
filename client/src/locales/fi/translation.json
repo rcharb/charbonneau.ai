@@ -289,6 +289,7 @@
   "com_nav_balance_payment_issue": "Maksussasi on ongelma. Päivitä maksutapasi.",
   "com_nav_balance_subscription_ending": "Tilauksesi on peruutettu ja päättyy näytettynä päivänä.",
   "com_nav_balance_manage_subscription": "Hallinnoi tilausta",
+  "com_nav_balance_portal_error": "Laskutusportaalin avaaminen epäonnistui. Yritä uudelleen.",
   "com_nav_trial": "Kokeilu",
   "com_nav_trial_depleted": "Kokeilusaldo käytetty. Tilaa jatkaaksesi.",
   "com_nav_plan_standard": "Perus",

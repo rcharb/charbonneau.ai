@@ -414,6 +414,7 @@
   "com_nav_balance_payment_issue": "Il y a un problème avec votre paiement. Veuillez mettre à jour votre mode de paiement.",
   "com_nav_balance_subscription_ending": "Votre abonnement est annulé et prendra fin à la date indiquée.",
   "com_nav_balance_manage_subscription": "Gérer l'Abonnement",
+  "com_nav_balance_portal_error": "Échec de l'ouverture du portail de facturation. Veuillez réessayer.",
   "com_nav_trial": "Essai",
   "com_nav_trial_depleted": "Solde d'essai épuisé. Abonnez-vous pour continuer.",
   "com_nav_plan_standard": "Standard",

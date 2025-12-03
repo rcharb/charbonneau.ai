@@ -448,6 +448,7 @@
   "com_nav_balance_payment_issue": "您的付款存在问题。请更新您的付款方式。",
   "com_nav_balance_subscription_ending": "您的订阅已被取消，将在显示的日期结束。",
   "com_nav_balance_manage_subscription": "管理订阅",
+  "com_nav_balance_portal_error": "无法打开账单门户。请重试。",
   "com_nav_trial": "试用",
   "com_nav_trial_depleted": "试用余额已用完。请订阅以继续使用。",
   "com_nav_plan_standard": "标准版",

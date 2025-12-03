@@ -331,6 +331,7 @@
   "com_nav_balance_payment_issue": "Hi ha un problema amb el teu pagament. Si us plau, actualitza el teu mètode de pagament.",
   "com_nav_balance_subscription_ending": "La teva subscripció està cancel·lada i finalitzarà a la data mostrada.",
   "com_nav_balance_manage_subscription": "Gestionar Subscripció",
+  "com_nav_balance_portal_error": "No s'ha pogut obrir el portal de facturació. Si us plau, torneu-ho a provar.",
   "com_nav_trial": "Prova",
   "com_nav_trial_depleted": "El saldo de prova s'ha esgotat. Subscriu-te per continuar.",
   "com_nav_plan_standard": "Estàndard",

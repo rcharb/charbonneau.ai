@@ -363,6 +363,7 @@
   "com_nav_balance_payment_issue": "お支払いに問題があります。お支払い方法を更新してください。",
   "com_nav_balance_subscription_ending": "サブスクリプションはキャンセルされ、表示された日付に終了します。",
   "com_nav_balance_manage_subscription": "サブスクリプションを管理",
+  "com_nav_balance_portal_error": "請求ポータルを開けませんでした。もう一度お試しください。",
   "com_nav_trial": "トライアル",
   "com_nav_trial_depleted": "トライアル残高がなくなりました。続けるには購読してください。",
   "com_nav_plan_standard": "スタンダード",

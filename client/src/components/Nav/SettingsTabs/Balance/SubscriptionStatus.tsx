@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Crown, Sparkles, AlertCircle, Calendar, CheckCircle2 } from 'lucide-react';
-import { Button, Label } from '@librechat/client';
+import { Crown, Sparkles, AlertCircle, Calendar, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Button, Label, Spinner } from '@librechat/client';
+import { useCreatePortalSessionMutation } from '~/data-provider/Stripe';
 import { useLocalize } from '~/hooks';
 
 interface SubscriptionStatusProps {
@@ -25,10 +26,27 @@ const SubscriptionStatus: React.FC<SubscriptionStatusProps> = ({
 }) => {
   const localize = useLocalize();
   const navigate = useNavigate();
+  const [portalError, setPortalError] = useState<string | null>(null);
+  const createPortalSessionMutation = useCreatePortalSessionMutation();
 
   const handleSubscribe = () => {
     onClose?.();
     navigate('/choose-plan');
+  };
+
+  const handleManageSubscription = () => {
+    setPortalError(null);
+    createPortalSessionMutation.mutate(undefined, {
+      onSuccess: (data) => {
+        // Open Stripe Customer Portal in a new window
+        window.open(data.url, '_blank');
+      },
+      onError: (error: any) => {
+        setPortalError(
+          error.response?.data?.error || error.message || localize('com_nav_balance_portal_error'),
+        );
+      },
+    });
   };
 
   // Format the period end date
@@ -168,10 +186,30 @@ const SubscriptionStatus: React.FC<SubscriptionStatusProps> = ({
                   <span>{localize('com_nav_balance_subscription_ending')}</span>
                 </div>
               )}
+
+              {portalError && (
+                <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-red-50 p-2 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>{portalError}</span>
+                </div>
+              )}
             </div>
 
-            <Button onClick={handleSubscribe} variant="outline" size="sm" className="mt-3">
-              {localize('com_nav_balance_manage_subscription')}
+            <Button
+              onClick={handleManageSubscription}
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              disabled={createPortalSessionMutation.isLoading}
+            >
+              {createPortalSessionMutation.isLoading ? (
+                <Spinner className="h-4 w-4" />
+              ) : (
+                <>
+                  {localize('com_nav_balance_manage_subscription')}
+                  <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
+                </>
+              )}
             </Button>
           </div>
         </div>

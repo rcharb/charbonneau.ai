@@ -233,6 +233,7 @@
   "com_nav_balance_payment_issue": "Vyskytl se problém s vaší platbou. Aktualizujte prosím svou platební metodu.",
   "com_nav_balance_subscription_ending": "Vaše předplatné bylo zrušeno a skončí k zobrazovanému datu.",
   "com_nav_balance_manage_subscription": "Spravovat předplatné",
+  "com_nav_balance_portal_error": "Nepodařilo se otevřít fakturační portál. Zkuste to prosím znovu.",
   "com_nav_trial": "Zkušební",
   "com_nav_trial_depleted": "Zkušební zůstatek vyčerpán. Pro pokračování se přihlaste k odběru.",
   "com_nav_plan_standard": "Standardní",

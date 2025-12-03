@@ -271,15 +271,21 @@ router.post('/create-subscription', requireJwtAuth, async (req, res) => {
         }
       }
     }
-
+    console.log('subscription', subscription);
     // Update user with Stripe customer and subscription info
-    await updateUser(req.user.id, {
+    const userUpdate = {
       stripeCustomerId: customerId,
       stripeSubscriptionId: subscription.id,
       subscriptionPlan: plan,
       subscriptionStatus: finalSubscriptionStatus,
-      subscriptionPeriodEnd: new Date(subscription.current_period_end * 1000),
-    });
+    };
+
+    // Only set period end if it exists (subscription must be active or trialing)
+    if (subscription.current_period_end) {
+      userUpdate.subscriptionPeriodEnd = new Date(subscription.current_period_end * 1000);
+    }
+
+    await updateUser(req.user.id, userUpdate);
 
     const tokenAmount = getTokensForPlan(plan);
 
@@ -289,8 +295,6 @@ router.post('/create-subscription', requireJwtAuth, async (req, res) => {
       $set: {
         balanceType: 'subscription',
         subscriptionPlan: plan,
-        subscriptionPeriodStart: new Date(subscription.current_period_start * 1000),
-        subscriptionPeriodEnd: new Date(subscription.current_period_end * 1000),
         autoRefillEnabled: true,
         refillIntervalValue: 1,
         refillIntervalUnit: 'months',
@@ -298,6 +302,16 @@ router.post('/create-subscription', requireJwtAuth, async (req, res) => {
         lastRefill: new Date(),
       },
     };
+
+    // Only set period dates if they exist (subscription must be active or trialing)
+    if (subscription.current_period_start) {
+      balanceUpdate.$set.subscriptionPeriodStart = new Date(
+        subscription.current_period_start * 1000,
+      );
+    }
+    if (subscription.current_period_end) {
+      balanceUpdate.$set.subscriptionPeriodEnd = new Date(subscription.current_period_end * 1000);
+    }
 
     // If subscription is active immediately, also add tokens
     if (finalSubscriptionStatus === 'active') {
@@ -434,6 +448,37 @@ router.post('/reactivate-subscription', requireJwtAuth, async (req, res) => {
   } catch (error) {
     logger.error('Error reactivating subscription:', error);
     res.status(500).json({ error: 'Failed to reactivate subscription' });
+  }
+});
+
+/**
+ * Create Stripe Customer Portal session
+ * Allows users to manage billing, update payment methods, and cancel subscriptions
+ */
+router.post('/create-portal-session', requireJwtAuth, async (req, res) => {
+  try {
+    const user = await findUser({ _id: req.user.id });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    console.log('user', user);
+    if (!user.stripeCustomerId) {
+      return res.status(400).json({ error: 'No Stripe customer found for this account' });
+    }
+
+    // Create a portal session for the customer
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: user.stripeCustomerId,
+      return_url: `${process.env.DOMAIN_CLIENT || req.headers.origin}/c/new`,
+    });
+
+    res.json({
+      url: portalSession.url,
+    });
+  } catch (error) {
+    logger.error('Error creating portal session:', error);
+    res.status(500).json({ error: 'Failed to create customer portal session' });
   }
 });
 

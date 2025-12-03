@@ -168,6 +168,7 @@
   "com_nav_balance_payment_issue": "Có vấn đề với thanh toán của bạn. Vui lòng cập nhật phương thức thanh toán.",
   "com_nav_balance_subscription_ending": "Đăng ký của bạn đã bị hủy và sẽ kết thúc vào ngày được hiển thị.",
   "com_nav_balance_manage_subscription": "Quản lý đăng ký",
+  "com_nav_balance_portal_error": "Không thể mở cổng thanh toán. Vui lòng thử lại.",
   "com_nav_trial": "Dùng thử",
   "com_nav_trial_depleted": "Số dư dùng thử đã hết. Đăng ký để tiếp tục.",
   "com_nav_plan_standard": "Tiêu chuẩn",

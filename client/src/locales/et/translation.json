@@ -334,6 +334,7 @@
   "com_nav_balance_payment_issue": "Teie maksega on probleem. Palun värskendage oma makseviisi.",
   "com_nav_balance_subscription_ending": "Teie tellimus on tühistatud ja lõpeb näidatud kuupäeval.",
   "com_nav_balance_manage_subscription": "Halda tellimust",
+  "com_nav_balance_portal_error": "Arveldusportaali avamine ebaõnnestus. Palun proovige uuesti.",
   "com_nav_trial": "Prooviperiood",
   "com_nav_trial_depleted": "Prooviperioodi saldo on otsas. Jätkamiseks tellige.",
   "com_nav_plan_standard": "Standard",

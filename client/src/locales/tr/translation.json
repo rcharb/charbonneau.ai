@@ -285,6 +285,7 @@
   "com_nav_balance_payment_issue": "Ödemenizde bir sorun var. Lütfen ödeme yönteminizi güncelleyin.",
   "com_nav_balance_subscription_ending": "Aboneliğiniz iptal edildi ve gösterilen tarihte sona erecek.",
   "com_nav_balance_manage_subscription": "Aboneliği Yönet",
+  "com_nav_balance_portal_error": "Fatura portalı açılamadı. Lütfen tekrar deneyin.",
   "com_nav_trial": "Deneme",
   "com_nav_trial_depleted": "Deneme bakiyesi tükendi. Devam etmek için abone olun.",
   "com_nav_plan_standard": "Standart",

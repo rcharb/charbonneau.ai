@@ -402,6 +402,7 @@
   "com_nav_balance_payment_issue": "您的付款出現問題。請更新您的付款方式。",
   "com_nav_balance_subscription_ending": "您的訂閱已被取消，將於顯示的日期結束。",
   "com_nav_balance_manage_subscription": "管理訂閱",
+  "com_nav_balance_portal_error": "無法開啟帳單入口網站。請重試。",
   "com_nav_trial": "試用",
   "com_nav_trial_depleted": "試用餘額已用完。請訂閱以繼續使用。",
   "com_nav_plan_standard": "標準版",

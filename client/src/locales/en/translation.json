@@ -449,6 +449,7 @@
   "com_nav_balance_payment_issue": "There's an issue with your payment. Please update your payment method.",
   "com_nav_balance_subscription_ending": "Your subscription is canceled and will end on the date shown.",
   "com_nav_balance_manage_subscription": "Manage Subscription",
+  "com_nav_balance_portal_error": "Failed to open billing portal. Please try again.",
   "com_nav_trial": "Trial",
   "com_nav_trial_depleted": "Trial balance depleted. Subscribe to continue.",
   "com_nav_plan_standard": "Standard",

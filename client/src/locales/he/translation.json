@@ -444,6 +444,7 @@
   "com_nav_balance_payment_issue": "יש בעיה עם התשלום שלך. אנא עדכן את אמצעי התשלום.",
   "com_nav_balance_subscription_ending": "המנוי שלך בוטל ויסתיים בתאריך המוצג.",
   "com_nav_balance_manage_subscription": "ניהול מנוי",
+  "com_nav_balance_portal_error": "נכשל בפתיחת פורטל החיוב. אנא נסה שוב.",
   "com_nav_trial": "ניסיון",
   "com_nav_trial_depleted": "יתרת הניסיון נגמרה. הירשם כמנוי כדי להמשיך.",
   "com_nav_plan_standard": "רגיל",

@@ -416,6 +416,7 @@
   "com_nav_balance_payment_issue": "Existe um problema com o seu pagamento. Por favor, atualize o seu método de pagamento.",
   "com_nav_balance_subscription_ending": "A sua subscrição está cancelada e terminará na data indicada.",
   "com_nav_balance_manage_subscription": "Gerir Subscrição",
+  "com_nav_balance_portal_error": "Falha ao abrir o portal de faturação. Por favor, tente novamente.",
   "com_nav_trial": "Avaliação",
   "com_nav_trial_depleted": "Saldo de avaliação esgotado. Subscreva para continuar.",
   "com_nav_plan_standard": "Standard",

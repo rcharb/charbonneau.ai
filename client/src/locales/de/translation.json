@@ -447,6 +447,7 @@
   "com_nav_balance_payment_issue": "Es gibt ein Problem mit Ihrer Zahlung. Bitte aktualisieren Sie Ihre Zahlungsmethode.",
   "com_nav_balance_subscription_ending": "Ihr Abonnement wurde gekündigt und endet am angezeigten Datum.",
   "com_nav_balance_manage_subscription": "Abonnement verwalten",
+  "com_nav_balance_portal_error": "Abrechnungsportal konnte nicht geöffnet werden. Bitte versuchen Sie es erneut.",
   "com_nav_trial": "Testversion",
   "com_nav_trial_depleted": "Testguthaben aufgebraucht. Abonnieren Sie, um fortzufahren.",
   "com_nav_plan_standard": "Standard",

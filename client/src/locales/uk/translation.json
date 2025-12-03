@@ -443,6 +443,7 @@
   "com_nav_balance_payment_issue": "Виникла проблема з вашим платежем. Будь ласка, оновіть спосіб оплати.",
   "com_nav_balance_subscription_ending": "Вашу підписку скасовано і вона закінчиться у вказану дату.",
   "com_nav_balance_manage_subscription": "Керувати підпискою",
+  "com_nav_balance_portal_error": "Не вдалося відкрити портал оплати. Будь ласка, спробуйте ще раз.",
   "com_nav_trial": "Пробний період",
   "com_nav_trial_depleted": "Пробний баланс вичерпано. Підпишіться, щоб продовжити.",
   "com_nav_plan_standard": "Стандарт",

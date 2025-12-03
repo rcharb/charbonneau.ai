@@ -260,6 +260,7 @@
   "com_nav_balance_payment_issue": "Er is een probleem met je betaling. Werk je betaalmethode bij.",
   "com_nav_balance_subscription_ending": "Je abonnement is geannuleerd en eindigt op de aangegeven datum.",
   "com_nav_balance_manage_subscription": "Abonnement beheren",
+  "com_nav_balance_portal_error": "Kan facturatieportaal niet openen. Probeer het opnieuw.",
   "com_nav_trial": "Proef",
   "com_nav_trial_depleted": "Proefsaldo uitgeput. Abonneer om door te gaan.",
   "com_nav_plan_standard": "Standaard",

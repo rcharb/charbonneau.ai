@@ -373,6 +373,7 @@
   "com_nav_balance_payment_issue": "C'è un problema con il tuo pagamento. Per favore aggiorna il tuo metodo di pagamento.",
   "com_nav_balance_subscription_ending": "Il tuo abbonamento è stato annullato e terminerà alla data indicata.",
   "com_nav_balance_manage_subscription": "Gestisci Abbonamento",
+  "com_nav_balance_portal_error": "Impossibile aprire il portale di fatturazione. Riprova.",
   "com_nav_trial": "Prova",
   "com_nav_trial_depleted": "Saldo di prova esaurito. Abbonati per continuare.",
   "com_nav_plan_standard": "Standard",

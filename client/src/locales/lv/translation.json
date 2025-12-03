@@ -449,6 +449,7 @@
   "com_nav_balance_payment_issue": "Ir problēma ar jūsu maksājumu. Lūdzu, atjauniniet savu maksājuma metodi.",
   "com_nav_balance_subscription_ending": "Jūsu abonements ir atcelts un beigsies norādītajā datumā.",
   "com_nav_balance_manage_subscription": "Pārvaldīt abonementa",
+  "com_nav_balance_portal_error": "Neizdevās atvērt norēķinu portālu. Lūdzu, mēģiniet vēlreiz.",
   "com_nav_trial": "Izmēģinājums",
   "com_nav_trial_depleted": "Izmēģinājuma atlikums ir iztērēts. Abonējiet, lai turpinātu.",
   "com_nav_plan_standard": "Standarta",

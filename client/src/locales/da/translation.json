@@ -334,6 +334,7 @@
   "com_nav_balance_payment_issue": "Der er et problem med din betaling. Opdater venligst din betalingsmetode.",
   "com_nav_balance_subscription_ending": "Dit abonnement er annulleret og slutter på den viste dato.",
   "com_nav_balance_manage_subscription": "Administrer abonnement",
+  "com_nav_balance_portal_error": "Kunne ikke åbne faktureringsportalen. Prøv venligst igen.",
   "com_nav_trial": "Prøveperiode",
   "com_nav_trial_depleted": "Prøveperiode er opbrugt. Abonner for at fortsætte.",
   "com_nav_plan_standard": "Standard",

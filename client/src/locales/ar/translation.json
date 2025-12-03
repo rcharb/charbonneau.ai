@@ -285,6 +285,7 @@
   "com_nav_balance_payment_issue": "هناك مشكلة في الدفع الخاص بك. يرجى تحديث طريقة الدفع.",
   "com_nav_balance_subscription_ending": "تم إلغاء اشتراكك وسينتهي في التاريخ الموضح.",
   "com_nav_balance_manage_subscription": "إدارة الاشتراك",
+  "com_nav_balance_portal_error": "فشل فتح بوابة الفوترة. يرجى المحاولة مرة أخرى.",
   "com_nav_trial": "تجريبي",
   "com_nav_trial_depleted": "نفد رصيد التجربة. اشترك للمتابعة.",
   "com_nav_plan_standard": "قياسي",

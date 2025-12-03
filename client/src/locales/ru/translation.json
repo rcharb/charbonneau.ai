@@ -442,6 +442,7 @@
   "com_nav_balance_payment_issue": "Возникла проблема с вашим платежом. Пожалуйста, обновите способ оплаты.",
   "com_nav_balance_subscription_ending": "Ваша подписка отменена и закончится в указанную дату.",
   "com_nav_balance_manage_subscription": "Управление подпиской",
+  "com_nav_balance_portal_error": "Не удалось открыть портал оплаты. Пожалуйста, попробуйте снова.",
   "com_nav_trial": "Пробный период",
   "com_nav_trial_depleted": "Пробный баланс исчерпан. Подпишитесь для продолжения.",
   "com_nav_plan_standard": "Стандарт",

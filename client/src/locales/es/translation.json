@@ -353,6 +353,7 @@
   "com_nav_balance_payment_issue": "Hay un problema con tu pago. Por favor, actualiza tu método de pago.",
   "com_nav_balance_subscription_ending": "Tu suscripción está cancelada y finalizará en la fecha indicada.",
   "com_nav_balance_manage_subscription": "Administrar Suscripción",
+  "com_nav_balance_portal_error": "Error al abrir el portal de facturación. Por favor, inténtelo de nuevo.",
   "com_nav_trial": "Prueba",
   "com_nav_trial_depleted": "Saldo de prueba agotado. Suscríbete para continuar.",
   "com_nav_plan_standard": "Estándar",

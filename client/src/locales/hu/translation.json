@@ -308,6 +308,7 @@
   "com_nav_balance_payment_issue": "Probléma van a fizetésével. Kérjük, frissítse a fizetési módját.",
   "com_nav_balance_subscription_ending": "Előfizetése lemondásra került és a megjelenített időpontban lejár.",
   "com_nav_balance_manage_subscription": "Előfizetés kezelése",
+  "com_nav_balance_portal_error": "Nem sikerült megnyitni a számlázási portált. Kérjük, próbálja újra.",
   "com_nav_trial": "Próba",
   "com_nav_trial_depleted": "A próbaegyenleg elfogyott. Fizessen elő a folytatáshoz.",
   "com_nav_plan_standard": "Standard",

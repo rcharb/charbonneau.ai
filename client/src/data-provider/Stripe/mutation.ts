@@ -114,3 +114,26 @@ export const useReactivateSubscriptionMutation = (): UseMutationResult<
     },
   });
 };
+
+export interface CreatePortalSessionResponse {
+  url: string;
+}
+
+/**
+ * Create a Stripe Customer Portal session
+ * Returns URL to redirect user to manage billing, payment methods, and subscriptions
+ */
+export const useCreatePortalSessionMutation = (): UseMutationResult<
+  CreatePortalSessionResponse,
+  Error,
+  void
+> => {
+  return useMutation({
+    mutationFn: async () => {
+      const response = await axios.post<CreatePortalSessionResponse>(
+        '/api/stripe/create-portal-session',
+      );
+      return response.data;
+    },
+  });
+};

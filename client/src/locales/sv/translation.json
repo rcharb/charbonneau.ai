@@ -337,6 +337,7 @@
   "com_nav_balance_payment_issue": "Det är ett problem med din betalning. Vänligen uppdatera din betalningsmetod.",
   "com_nav_balance_subscription_ending": "Din prenumeration är avbruten och avslutas det datum som visas.",
   "com_nav_balance_manage_subscription": "Hantera prenumeration",
+  "com_nav_balance_portal_error": "Det gick inte att öppna faktureringsportalen. Försök igen.",
   "com_nav_trial": "Provperiod",
   "com_nav_trial_depleted": "Provsaldo förbrukat. Prenumerera för att fortsätta.",
   "com_nav_plan_standard": "Standard",

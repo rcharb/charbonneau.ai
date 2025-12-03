@@ -162,6 +162,7 @@
   "com_nav_balance_payment_issue": "Ada masalah dengan pembayaran Anda. Silakan perbarui metode pembayaran Anda.",
   "com_nav_balance_subscription_ending": "Langganan Anda dibatalkan dan akan berakhir pada tanggal yang ditampilkan.",
   "com_nav_balance_manage_subscription": "Kelola Langganan",
+  "com_nav_balance_portal_error": "Gagal membuka portal tagihan. Silakan coba lagi.",
   "com_nav_trial": "Uji Coba",
   "com_nav_trial_depleted": "Saldo uji coba habis. Berlangganan untuk melanjutkan.",
   "com_nav_plan_standard": "Standar",

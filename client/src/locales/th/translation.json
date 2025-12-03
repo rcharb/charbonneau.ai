@@ -318,6 +318,7 @@
   "com_nav_balance_payment_issue": "มีปัญหากับการชำระเงินของคุณ โปรดอัปเดตวิธีการชำระเงิน",
   "com_nav_balance_subscription_ending": "การสมัครสมาชิกของคุณถูกยกเลิกและจะสิ้นสุดในวันที่แสดง",
   "com_nav_balance_manage_subscription": "จัดการการสมัครสมาชิก",
+  "com_nav_balance_portal_error": "ไม่สามารถเปิดพอร์ทัลการเรียกเก็บเงินได้ กรุณาลองอีกครั้ง",
   "com_nav_trial": "ทดลองใช้",
   "com_nav_trial_depleted": "ยอดทดลองใช้หมดแล้ว สมัครสมาชิกเพื่อดำเนินการต่อ",
   "com_nav_plan_standard": "มาตรฐาน",
