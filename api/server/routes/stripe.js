@@ -49,6 +49,67 @@ const isYearlySubscription = (priceId) => {
   return priceId === standardYearly || priceId === plusYearly;
 };
 
+/**
+ * Helper function to update user balance when subscription payment succeeds
+ * This is used both synchronously (after immediate payment) and via webhooks
+ */
+async function updateBalanceForSubscription(userId, subscription) {
+  const priceId = subscription.items?.data?.[0]?.price?.id;
+  const plan = getPlanFromPriceId(priceId) || subscription.metadata?.plan;
+  const isYearly = isYearlySubscription(priceId);
+
+  if (!plan) {
+    logger.warn(`Could not determine plan for subscription: ${subscription.id}`);
+    return;
+  }
+
+  const tokenAmount = getTokensForPlan(plan);
+  const now = new Date();
+
+  // Build complete balance update with all fields populated
+  const balanceUpdate = {
+    $set: {
+      balanceType: 'subscription',
+      subscriptionPlan: plan,
+      autoRefillEnabled: true,
+      refillIntervalValue: 1,
+      refillIntervalUnit: 'months',
+      refillAmount: tokenAmount,
+      lastRefill: now,
+      isYearlySubscription: isYearly,
+      tokenCredits: tokenAmount,
+      subscriptionCredits: tokenAmount,
+    },
+  };
+
+  // Populate all date fields from the subscription
+  if (subscription.current_period_start) {
+    const startDate = new Date(subscription.current_period_start * 1000);
+    balanceUpdate.$set.subscriptionPeriodStart = startDate;
+    balanceUpdate.$set.subscriptionStartDate = startDate;
+    balanceUpdate.$set.billingCycleDay = startDate.getUTCDate();
+  }
+
+  if (subscription.current_period_end) {
+    balanceUpdate.$set.subscriptionPeriodEnd = new Date(subscription.current_period_end * 1000);
+  }
+
+  // For yearly subscriptions, track monthly refills
+  if (isYearly && subscription.current_period_start) {
+    const startDate = new Date(subscription.current_period_start * 1000);
+    // For new subscriptions, update the refill tracking
+    // This marks that they've received tokens for this month
+    balanceUpdate.$set.lastRefillMonth = startDate.getUTCMonth() + 1; // 1-12
+    balanceUpdate.$set.lastRefillYear = startDate.getUTCFullYear();
+  }
+
+  await Balance.findOneAndUpdate({ user: userId }, balanceUpdate, { upsert: true });
+
+  logger.info(
+    `Updated balance for user ${userId}: ${tokenAmount} tokens (${plan} ${isYearly ? 'yearly' : 'monthly'} plan)`,
+  );
+}
+
 router.post('/create-setup-intent', requireJwtAuth, async (req, res) => {
   try {
     const { planId } = req.body;
@@ -158,15 +219,23 @@ router.post('/create-subscription', requireJwtAuth, async (req, res) => {
       }
     }
 
+    // Set the payment method as default for the customer
+    await stripe.customers.update(customerId, {
+      invoice_settings: {
+        default_payment_method: paymentMethodId,
+      },
+    });
+
+    // Create subscription with the already-authorized payment method
+    // Since the payment method was authorized via SetupIntent, Stripe will charge it immediately
+    // Using 'error_if_incomplete' ensures the payment succeeds or fails immediately (no pending state)
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
-      items: [
-        {
-          price: priceId,
-        },
-      ],
-      payment_behavior: 'default_incomplete',
+      items: [{ price: priceId }],
+      default_payment_method: paymentMethodId,
+      payment_behavior: 'error_if_incomplete', // Charge immediately, fail if payment can't complete
       payment_settings: {
+        payment_method_types: ['card'],
         save_default_payment_method: 'on_subscription',
       },
       expand: ['latest_invoice.payment_intent'],
@@ -177,185 +246,58 @@ router.post('/create-subscription', requireJwtAuth, async (req, res) => {
       },
     });
 
-    await stripe.subscriptions.update(subscription.id, {
-      default_payment_method: paymentMethodId,
-    });
+    // No client_secret needed - payment method was already authorized via SetupIntent
+    // Subscription should be active or will have failed with error_if_incomplete
 
-    await stripe.customers.update(customerId, {
-      invoice_settings: {
-        default_payment_method: paymentMethodId,
-      },
-    });
-
-    let clientSecret = null;
-    let finalSubscriptionStatus = subscription.status;
-    const invoiceId =
-      typeof subscription.latest_invoice === 'string'
-        ? subscription.latest_invoice
-        : subscription.latest_invoice?.id;
-
-    if (invoiceId) {
-      let invoice = await stripe.invoices.retrieve(invoiceId, {
-        expand: ['payment_intent'],
-      });
-
-      if (invoice.status === 'draft') {
-        invoice = await stripe.invoices.finalizeInvoice(invoiceId, {
-          expand: ['payment_intent'],
-        });
-      }
-
-      if (invoice.payment_intent) {
-        const paymentIntentId =
-          typeof invoice.payment_intent === 'string'
-            ? invoice.payment_intent
-            : invoice.payment_intent.id;
-
-        if (paymentIntentId) {
-          const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-          clientSecret = paymentIntent.client_secret;
-        }
-      } else if (invoice.amount_due > 0 && invoice.status === 'open') {
-        try {
-          const paidInvoice = await stripe.invoices.pay(invoiceId, {
-            payment_method: paymentMethodId,
-            off_session: false,
-          });
-
-          if (paidInvoice.status === 'paid') {
-            const updatedSubscription = await stripe.subscriptions.retrieve(subscription.id);
-            finalSubscriptionStatus = updatedSubscription.status;
-
-            if (updatedSubscription.status !== 'active') {
-              const paymentIntent = await stripe.paymentIntents.create({
-                amount: invoice.amount_due,
-                currency: invoice.currency || 'usd',
-                customer: customerId,
-                payment_method: paymentMethodId,
-                confirmation_method: 'manual',
-                confirm: false,
-                metadata: {
-                  invoice_id: invoiceId,
-                  subscription_id: subscription.id,
-                  userId: req.user?.id?.toString() || '',
-                  plan,
-                  period,
-                },
-              });
-              clientSecret = paymentIntent.client_secret;
-            }
-          }
-        } catch (payError) {
-          if (payError.payment_intent) {
-            const paymentIntent =
-              typeof payError.payment_intent === 'string'
-                ? await stripe.paymentIntents.retrieve(payError.payment_intent)
-                : payError.payment_intent;
-            clientSecret = paymentIntent.client_secret;
-          } else if (payError.code === 'invoice_payment_intent_requires_action') {
-            const paymentIntentId = payError.payment_intent?.id || payError.payment_intent;
-            if (paymentIntentId) {
-              const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-              clientSecret = paymentIntent.client_secret;
-            }
-          } else {
-            const paymentIntent = await stripe.paymentIntents.create({
-              amount: invoice.amount_due,
-              currency: invoice.currency || 'usd',
-              customer: customerId,
-              payment_method: paymentMethodId,
-              confirmation_method: 'manual',
-              confirm: false,
-              metadata: {
-                invoice_id: invoiceId,
-                subscription_id: subscription.id,
-                userId: req.user?.id?.toString() || '',
-                plan,
-                period,
-              },
-            });
-            clientSecret = paymentIntent.client_secret;
-          }
-        }
-      }
-    }
-    console.log('subscription', subscription);
     // Update user with Stripe customer and subscription info
     const userUpdate = {
       stripeCustomerId: customerId,
       stripeSubscriptionId: subscription.id,
       subscriptionPlan: plan,
-      subscriptionStatus: finalSubscriptionStatus,
+      subscriptionStatus: subscription.status,
     };
 
-    // Only set period end if it exists (subscription must be active or trialing)
+    // Only set period end if it exists
     if (subscription.current_period_end) {
       userUpdate.subscriptionPeriodEnd = new Date(subscription.current_period_end * 1000);
     }
 
     await updateUser(req.user.id, userUpdate);
 
-    const tokenAmount = getTokensForPlan(plan);
-    const isYearly = isYearlySubscription(priceId);
-    const now = new Date();
+    // Check if payment succeeded immediately and update balance synchronously
+    // This handles the case where payment completes before webhook arrives
+    const invoiceId =
+      typeof subscription.latest_invoice === 'string'
+        ? subscription.latest_invoice
+        : subscription.latest_invoice?.id;
 
-    // Always update balance record when subscription is created
-    // Even if status is 'incomplete', we set up the subscription info
-    const balanceUpdate = {
-      $set: {
-        balanceType: 'subscription',
-        subscriptionPlan: plan,
-        autoRefillEnabled: true,
-        refillIntervalValue: 1,
-        refillIntervalUnit: 'months',
-        refillAmount: tokenAmount,
-        lastRefill: now,
-        isYearlySubscription: isYearly,
-      },
-    };
+    if (subscription.status === 'active' && invoiceId) {
+      try {
+        const invoice = await stripe.invoices.retrieve(invoiceId);
 
-    // For yearly subscriptions, store the billing cycle day and start date for monthly refills
-    if (isYearly && subscription.current_period_start) {
-      const startDate = new Date(subscription.current_period_start * 1000);
-      balanceUpdate.$set.billingCycleDay = startDate.getUTCDate();
-      balanceUpdate.$set.subscriptionStartDate = startDate;
-      // Set initial refill month/year to the start month (initial tokens count as first refill)
-      balanceUpdate.$set.lastRefillMonth = startDate.getUTCMonth() + 1; // 1-12
-      balanceUpdate.$set.lastRefillYear = startDate.getUTCFullYear();
+        // If invoice is paid, update balance immediately (synchronously)
+        if (invoice.status === 'paid' && invoice.billing_reason === 'subscription_create') {
+          await updateBalanceForSubscription(req.user.id, subscription);
+
+          logger.info(
+            `Subscription created and payment confirmed for user ${req.user.id}: balance updated (${plan} plan)`,
+          );
+        }
+      } catch (invoiceError) {
+        // If we can't retrieve invoice, that's okay - webhook will handle it
+        logger.warn(
+          `Could not retrieve invoice ${invoiceId} to update balance: ${invoiceError.message}`,
+        );
+      }
     }
 
-    // Only set period dates if they exist (subscription must be active or trialing)
-    if (subscription.current_period_start) {
-      balanceUpdate.$set.subscriptionPeriodStart = new Date(
-        subscription.current_period_start * 1000,
-      );
-    }
-    if (subscription.current_period_end) {
-      balanceUpdate.$set.subscriptionPeriodEnd = new Date(subscription.current_period_end * 1000);
-    }
-
-    // If subscription is active immediately, set tokens to plan amount
-    if (finalSubscriptionStatus === 'active') {
-      balanceUpdate.$set.tokenCredits = tokenAmount;
-      balanceUpdate.$set.subscriptionCredits = tokenAmount;
-      logger.info(
-        `Subscription created for user ${req.user.id}: set balance to ${tokenAmount} tokens (${plan} plan)`,
-      );
-    } else {
-      logger.info(
-        `Subscription created for user ${req.user.id} with status: ${finalSubscriptionStatus} (${plan} plan)`,
-      );
-    }
-
-    await Balance.findOneAndUpdate({ user: req.user.id }, balanceUpdate, {
-      upsert: true,
-      new: true,
-    });
+    logger.info(
+      `Subscription created for user ${req.user.id} with status: ${subscription.status} (${plan} plan). Payment charged automatically using pre-authorized payment method.`,
+    );
 
     res.json({
       subscriptionId: subscription.id,
-      clientSecret: clientSecret,
-      status: finalSubscriptionStatus,
+      status: subscription.status,
     });
   } catch (error) {
     logger.error('Stripe subscription creation error:', error);
@@ -611,47 +553,10 @@ async function processSubscriptionUpdate(userId, subscription) {
 
   await updateUser(userId, updateData);
 
-  // Update balance record with subscription info
-  if (subscription.status === 'active') {
-    const balanceUpdate = {
-      balanceType: 'subscription',
-      subscriptionPlan: plan,
-      autoRefillEnabled: true,
-      refillIntervalValue: 1,
-      refillIntervalUnit: 'months',
-      refillAmount: getTokensForPlan(plan),
-      isYearlySubscription: isYearly,
-    };
-
-    // For yearly subscriptions, store the billing cycle day and start date for monthly refills
-    if (isYearly && subscription.current_period_start) {
-      const startDate = new Date(subscription.current_period_start * 1000);
-      balanceUpdate.billingCycleDay = startDate.getUTCDate();
-      balanceUpdate.subscriptionStartDate = startDate;
-
-      // Check if this is a new subscription or renewal
-      const existingBalance = await Balance.findOne({ user: userId }).lean();
-      if (!existingBalance || !existingBalance.lastRefillMonth) {
-        // New subscription - set initial refill month/year
-        balanceUpdate.lastRefillMonth = startDate.getUTCMonth() + 1;
-        balanceUpdate.lastRefillYear = startDate.getUTCFullYear();
-      }
-      // If existing subscription, keep existing refill tracking (will be updated by cron)
-    }
-
-    // Only set period dates if they exist
-    if (subscription.current_period_start) {
-      balanceUpdate.subscriptionPeriodStart = new Date(subscription.current_period_start * 1000);
-    }
-    if (subscription.current_period_end) {
-      balanceUpdate.subscriptionPeriodEnd = new Date(subscription.current_period_end * 1000);
-    }
-
-    await Balance.findOneAndUpdate({ user: userId }, { $set: balanceUpdate }, { upsert: true });
-  }
-
+  // Don't update balance here - wait for invoice.payment_succeeded webhook
+  // This ensures tokens are only granted after actual payment
   logger.info(
-    `Updated subscription for user ${userId}: ${subscription.status}, plan: ${plan}, yearly: ${isYearly}`,
+    `Updated subscription for user ${userId}: ${subscription.status}, plan: ${plan}, yearly: ${isYearly}. Balance will be updated upon payment confirmation.`,
   );
 }
 
@@ -695,6 +600,7 @@ async function handleSubscriptionDeleted(subscription) {
 
 /**
  * Handle successful invoice payment (subscription renewal)
+ * This is where we actually grant tokens after payment is confirmed
  */
 async function handleInvoicePaymentSucceeded(invoice) {
   // Get subscription ID from either direct field or parent object (newer API)
@@ -715,77 +621,40 @@ async function handleInvoicePaymentSucceeded(invoice) {
 
   // Fetch subscription to get plan details
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-  const priceId = subscription.items?.data?.[0]?.price?.id;
-  const plan = getPlanFromPriceId(priceId) || subscription.metadata?.plan;
-  const isYearly = isYearlySubscription(priceId);
-
-  if (!plan) {
-    logger.warn(`Could not determine plan for subscription: ${subscriptionId}`);
-    return;
-  }
-
-  const tokenAmount = getTokensForPlan(plan);
 
   // Check if this is the first invoice (new subscription) or a renewal
   const isRenewal = invoice.billing_reason === 'subscription_cycle';
   const isNewSubscription = invoice.billing_reason === 'subscription_create';
 
   if (isRenewal || isNewSubscription) {
+    const priceId = subscription.items?.data?.[0]?.price?.id;
+    const plan = getPlanFromPriceId(priceId) || subscription.metadata?.plan;
+    const isYearly = isYearlySubscription(priceId);
+
+    if (!plan) {
+      logger.warn(`Could not determine plan for subscription: ${subscriptionId}`);
+      return;
+    }
+
     // For yearly subscriptions:
     // - On creation: give initial tokens
     // - On renewal (yearly): give full year's worth of tokens
     // - Monthly refills are handled by the cron job
     const shouldAddTokens = isNewSubscription || (isRenewal && isYearly);
-    const now = new Date();
-
-    const balanceUpdate = {
-      $set: {
-        balanceType: 'subscription',
-        subscriptionPlan: plan,
-        lastRefill: now,
-        isYearlySubscription: isYearly,
-      },
-    };
-
-    // Set tokens to plan amount for new subscriptions or yearly renewals
-    if (shouldAddTokens) {
-      balanceUpdate.$set.tokenCredits = tokenAmount;
-      balanceUpdate.$set.subscriptionCredits = tokenAmount;
-    }
-
-    // For yearly subscriptions, store the billing cycle day and start date
-    if (isYearly && subscription.current_period_start) {
-      const startDate = new Date(subscription.current_period_start * 1000);
-      balanceUpdate.$set.billingCycleDay = startDate.getUTCDate();
-      balanceUpdate.$set.subscriptionStartDate = startDate;
-
-      // For new subscriptions or renewals, update the refill tracking
-      // This marks that they've received tokens for this month
-      balanceUpdate.$set.lastRefillMonth = startDate.getUTCMonth() + 1; // 1-12
-      balanceUpdate.$set.lastRefillYear = startDate.getUTCFullYear();
-    }
-
-    // Only set period dates if they exist
-    if (subscription.current_period_start) {
-      balanceUpdate.$set.subscriptionPeriodStart = new Date(
-        subscription.current_period_start * 1000,
-      );
-    }
-    if (subscription.current_period_end) {
-      balanceUpdate.$set.subscriptionPeriodEnd = new Date(subscription.current_period_end * 1000);
-    }
-
-    await Balance.findOneAndUpdate({ user: user._id }, balanceUpdate, { upsert: true });
 
     if (shouldAddTokens) {
-      logger.info(
-        `${isRenewal ? 'Renewed' : 'Created'} subscription for user ${user._id}: set balance to ${tokenAmount} tokens (${plan} ${isYearly ? 'yearly' : 'monthly'} plan)`,
-      );
-    } else {
-      logger.info(
-        `${isRenewal ? 'Renewed' : 'Updated'} subscription for user ${user._id} (${plan} ${isYearly ? 'yearly' : 'monthly'} plan) - monthly refills handled by cron`,
-      );
+      // Use the helper function to update balance
+      await updateBalanceForSubscription(user._id.toString(), subscription);
     }
+
+    // Update user subscription status to active
+    await updateUser(user._id.toString(), {
+      subscriptionStatus: 'active',
+    });
+
+    logger.info(
+      `${isRenewal ? 'Renewed' : 'Created'} subscription for user ${user._id} (${plan} ${isYearly ? 'yearly' : 'monthly'} plan) - balance updated via webhook`,
+    );
   }
 }
 
