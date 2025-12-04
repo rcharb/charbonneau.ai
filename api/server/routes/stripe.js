@@ -686,20 +686,26 @@ async function handleInvoicePaymentSucceeded(invoice) {
 
   if (isRenewal || isNewSubscription) {
     // Refill balance with subscription tokens
-    await Balance.findOneAndUpdate(
-      { user: user._id },
-      {
-        $inc: { tokenCredits: tokenAmount, subscriptionCredits: tokenAmount },
-        $set: {
-          balanceType: 'subscription',
-          subscriptionPlan: plan,
-          subscriptionPeriodStart: new Date(subscription.current_period_start * 1000),
-          subscriptionPeriodEnd: new Date(subscription.current_period_end * 1000),
-          lastRefill: new Date(),
-        },
+    const balanceUpdate = {
+      $inc: { tokenCredits: tokenAmount, subscriptionCredits: tokenAmount },
+      $set: {
+        balanceType: 'subscription',
+        subscriptionPlan: plan,
+        lastRefill: new Date(),
       },
-      { upsert: true },
-    );
+    };
+
+    // Only set period dates if they exist
+    if (subscription.current_period_start) {
+      balanceUpdate.$set.subscriptionPeriodStart = new Date(
+        subscription.current_period_start * 1000,
+      );
+    }
+    if (subscription.current_period_end) {
+      balanceUpdate.$set.subscriptionPeriodEnd = new Date(subscription.current_period_end * 1000);
+    }
+
+    await Balance.findOneAndUpdate({ user: user._id }, balanceUpdate, { upsert: true });
 
     logger.info(
       `${isRenewal ? 'Renewed' : 'Created'} subscription for user ${user._id}: added ${tokenAmount} tokens (${plan} plan)`,
