@@ -334,11 +334,12 @@ router.post('/create-subscription', requireJwtAuth, async (req, res) => {
       balanceUpdate.$set.subscriptionPeriodEnd = new Date(subscription.current_period_end * 1000);
     }
 
-    // If subscription is active immediately, also add tokens
+    // If subscription is active immediately, set tokens to plan amount
     if (finalSubscriptionStatus === 'active') {
-      balanceUpdate.$inc = { tokenCredits: tokenAmount, subscriptionCredits: tokenAmount };
+      balanceUpdate.$set.tokenCredits = tokenAmount;
+      balanceUpdate.$set.subscriptionCredits = tokenAmount;
       logger.info(
-        `Subscription created for user ${req.user.id}: added ${tokenAmount} tokens (${plan} plan)`,
+        `Subscription created for user ${req.user.id}: set balance to ${tokenAmount} tokens (${plan} plan)`,
       );
     } else {
       logger.info(
@@ -746,9 +747,10 @@ async function handleInvoicePaymentSucceeded(invoice) {
       },
     };
 
-    // Add tokens for new subscriptions or yearly renewals
+    // Set tokens to plan amount for new subscriptions or yearly renewals
     if (shouldAddTokens) {
-      balanceUpdate.$inc = { tokenCredits: tokenAmount, subscriptionCredits: tokenAmount };
+      balanceUpdate.$set.tokenCredits = tokenAmount;
+      balanceUpdate.$set.subscriptionCredits = tokenAmount;
     }
 
     // For yearly subscriptions, store the billing cycle day and start date
@@ -777,7 +779,7 @@ async function handleInvoicePaymentSucceeded(invoice) {
 
     if (shouldAddTokens) {
       logger.info(
-        `${isRenewal ? 'Renewed' : 'Created'} subscription for user ${user._id}: added ${tokenAmount} tokens (${plan} ${isYearly ? 'yearly' : 'monthly'} plan)`,
+        `${isRenewal ? 'Renewed' : 'Created'} subscription for user ${user._id}: set balance to ${tokenAmount} tokens (${plan} ${isYearly ? 'yearly' : 'monthly'} plan)`,
       );
     } else {
       logger.info(

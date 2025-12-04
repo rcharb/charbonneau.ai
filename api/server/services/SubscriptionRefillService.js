@@ -196,7 +196,7 @@ class SubscriptionRefillService {
 
           successCount++;
           logger.info(
-            `[SubscriptionRefillService] Successfully refilled ${refillAmount} tokens for user ${balance.user} (${balance.subscriptionPlan} plan, billing day: ${balance.billingCycleDay})`,
+            `[SubscriptionRefillService] Successfully added ${refillAmount} tokens for user ${balance.user} (${balance.subscriptionPlan} plan, billing day: ${balance.billingCycleDay})`,
           );
         } catch (error) {
           errorCount++;
