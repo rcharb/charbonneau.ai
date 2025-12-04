@@ -20,4 +20,14 @@ export interface IBalance extends Document {
   refillIntervalUnit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
   lastRefill: Date;
   refillAmount: number;
+  // For yearly subscriptions: day of month when subscription started (1-31)
+  billingCycleDay?: number | null;
+  // Track if this is a yearly subscription that needs monthly refills
+  isYearlySubscription?: boolean;
+  // Store original subscription start date for timezone-aware calculations
+  subscriptionStartDate?: Date | null;
+  // Track last refill month (1-12) to prevent duplicate refills
+  lastRefillMonth?: number | null;
+  // Track last refill year to prevent duplicate refills
+  lastRefillYear?: number | null;
 }
