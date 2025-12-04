@@ -655,8 +655,11 @@ async function handleSubscriptionDeleted(subscription) {
  * Handle successful invoice payment (subscription renewal)
  */
 async function handleInvoicePaymentSucceeded(invoice) {
+  // Get subscription ID from either direct field or parent object (newer API)
+  const subscriptionId = invoice.subscription || invoice.parent?.subscription_details?.subscription;
+
   // Only process subscription invoices
-  if (!invoice.subscription) {
+  if (!subscriptionId) {
     return;
   }
 
@@ -669,12 +672,12 @@ async function handleInvoicePaymentSucceeded(invoice) {
   }
 
   // Fetch subscription to get plan details
-  const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   const priceId = subscription.items?.data?.[0]?.price?.id;
   const plan = getPlanFromPriceId(priceId) || subscription.metadata?.plan;
 
   if (!plan) {
-    logger.warn(`Could not determine plan for subscription: ${invoice.subscription}`);
+    logger.warn(`Could not determine plan for subscription: ${subscriptionId}`);
     return;
   }
 
