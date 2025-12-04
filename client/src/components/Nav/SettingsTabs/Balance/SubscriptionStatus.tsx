@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRecoilState } from 'recoil';
 import { Crown, Sparkles, AlertCircle, Calendar, CheckCircle2, ExternalLink } from 'lucide-react';
 import { Button, Label, Spinner } from '@librechat/client';
 import { useCreatePortalSessionMutation } from '~/data-provider/Stripe';
 import { useLocalize } from '~/hooks';
+import store from '~/store';
 
 interface SubscriptionStatusProps {
   isTrialUser: boolean;
@@ -25,13 +26,13 @@ const SubscriptionStatus: React.FC<SubscriptionStatusProps> = ({
   onClose,
 }) => {
   const localize = useLocalize();
-  const navigate = useNavigate();
+  const [, setShowChoosePlan] = useRecoilState(store.showChoosePlan);
   const [portalError, setPortalError] = useState<string | null>(null);
   const createPortalSessionMutation = useCreatePortalSessionMutation();
 
   const handleSubscribe = () => {
     onClose?.();
-    navigate('/choose-plan');
+    setShowChoosePlan(true);
   };
 
   const handleManageSubscription = () => {

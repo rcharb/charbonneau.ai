@@ -20,9 +20,7 @@ import ShareRoute from './ShareRoute';
 import ChatRoute from './ChatRoute';
 import Search from './Search';
 import Root from './Root';
-import Checkout from './Checkout';
 import CheckoutComplete from './CheckoutComplete';
-import ChoosePlan from './ChoosePlan';
 
 const AuthLayout = () => (
   <AuthContextProvider>
@@ -129,14 +127,6 @@ export const router = createBrowserRouter(
                   <AgentMarketplace />
                 </MarketplaceProvider>
               ),
-            },
-            {
-              path: 'choose-plan',
-              element: <ChoosePlan />,
-            },
-            {
-              path: 'checkout',
-              element: <Checkout />,
             },
             {
               path: 'checkout/complete',

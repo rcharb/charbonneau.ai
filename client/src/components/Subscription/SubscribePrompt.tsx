@@ -1,7 +1,8 @@
-import { useNavigate } from 'react-router-dom';
+import { useRecoilState } from 'recoil';
 import { Sparkles, X } from 'lucide-react';
 import { Button, OGDialog, OGDialogContent } from '@librechat/client';
 import { useLocalize } from '~/hooks';
+import store from '~/store';
 
 interface SubscribePromptProps {
   open?: boolean;
@@ -14,11 +15,11 @@ export default function SubscribePrompt({
   onClose,
   variant = 'inline',
 }: SubscribePromptProps) {
-  const navigate = useNavigate();
   const localize = useLocalize();
+  const [, setShowChoosePlan] = useRecoilState(store.showChoosePlan);
 
   const handleSubscribe = () => {
-    navigate('/choose-plan');
+    setShowChoosePlan(true);
     onClose?.();
   };
 
