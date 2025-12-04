@@ -579,29 +579,35 @@ async function processSubscriptionUpdate(userId, subscription) {
     stripeSubscriptionId: subscription.id,
     subscriptionStatus: subscription.status,
     subscriptionPlan: plan,
-    subscriptionPeriodEnd: new Date(subscription.current_period_end * 1000),
   };
+
+  // Only set period end if it exists (subscription must be active or trialing)
+  if (subscription.current_period_end) {
+    updateData.subscriptionPeriodEnd = new Date(subscription.current_period_end * 1000);
+  }
 
   await updateUser(userId, updateData);
 
   // Update balance record with subscription info
   if (subscription.status === 'active') {
-    await Balance.findOneAndUpdate(
-      { user: userId },
-      {
-        $set: {
-          balanceType: 'subscription',
-          subscriptionPlan: plan,
-          subscriptionPeriodStart: new Date(subscription.current_period_start * 1000),
-          subscriptionPeriodEnd: new Date(subscription.current_period_end * 1000),
-          autoRefillEnabled: true,
-          refillIntervalValue: 1,
-          refillIntervalUnit: 'months',
-          refillAmount: getTokensForPlan(plan),
-        },
-      },
-      { upsert: true },
-    );
+    const balanceUpdate = {
+      balanceType: 'subscription',
+      subscriptionPlan: plan,
+      autoRefillEnabled: true,
+      refillIntervalValue: 1,
+      refillIntervalUnit: 'months',
+      refillAmount: getTokensForPlan(plan),
+    };
+
+    // Only set period dates if they exist
+    if (subscription.current_period_start) {
+      balanceUpdate.subscriptionPeriodStart = new Date(subscription.current_period_start * 1000);
+    }
+    if (subscription.current_period_end) {
+      balanceUpdate.subscriptionPeriodEnd = new Date(subscription.current_period_end * 1000);
+    }
+
+    await Balance.findOneAndUpdate({ user: userId }, { $set: balanceUpdate }, { upsert: true });
   }
 
   logger.info(`Updated subscription for user ${userId}: ${subscription.status}, plan: ${plan}`);
@@ -620,10 +626,16 @@ async function handleSubscriptionDeleted(subscription) {
   }
 
   // Update user subscription status
-  await updateUser(user._id.toString(), {
+  const updateData = {
     subscriptionStatus: 'canceled',
-    subscriptionPeriodEnd: new Date(subscription.current_period_end * 1000),
-  });
+  };
+
+  // Only set period end if it exists
+  if (subscription.current_period_end) {
+    updateData.subscriptionPeriodEnd = new Date(subscription.current_period_end * 1000);
+  }
+
+  await updateUser(user._id.toString(), updateData);
 
   // Stop auto-refill but keep current balance
   await Balance.findOneAndUpdate(
