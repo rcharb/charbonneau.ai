@@ -5,7 +5,7 @@ import { Elements, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Zap, Paperclip, Image as ImageIcon, FileText, ChevronLeft, X } from 'lucide-react';
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react';
 import { PaymentForm, PlanSummary } from '~/components/Subscription';
-import { Spinner } from '@librechat/client';
+import { Spinner, Button } from '@librechat/client';
 import { useLocalize } from '~/hooks';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -323,26 +323,30 @@ export default function CheckoutModal() {
                 as="div"
               >
                 <div className="flex items-center gap-3">
-                  <button
+                  <Button
                     type="button"
                     onClick={handleBack}
-                    className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-border-xheavy focus:ring-offset-2"
+                    variant="ghost"
+                    size="icon"
+                    className="opacity-70 hover:opacity-100"
                   >
                     <ChevronLeft className="h-6 w-6" />
                     <span className="sr-only">{localize('com_ui_back')}</span>
-                  </button>
+                  </Button>
                   <h2 className="text-2xl font-semibold text-text-primary">
                     {localize('com_subscription_configure_plan')}
                   </h2>
                 </div>
-                <button
+                <Button
                   type="button"
-                  className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-border-xheavy focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-surface-primary dark:focus:ring-offset-surface-primary"
                   onClick={handleClose}
+                  variant="ghost"
+                  size="icon"
+                  className="opacity-70 hover:opacity-100"
                 >
                   <X className="h-6 w-6 text-text-primary" />
                   <span className="sr-only">{localize('com_ui_close')}</span>
-                </button>
+                </Button>
               </DialogTitle>
 
               <div className="max-h-[calc(90vh-100px)] overflow-y-auto">

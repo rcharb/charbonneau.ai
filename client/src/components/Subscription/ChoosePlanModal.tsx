@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useRecoilState } from 'recoil';
 import * as Tabs from '@radix-ui/react-tabs';
-import { Sparkles, MessageSquare, Image, Cpu, Settings, Blocks, X } from 'lucide-react';
+import { Sparkles, MessageSquare, Lock, Users, Heart, CheckCircle, X } from 'lucide-react';
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react';
 import { PlanCard } from '~/components/Subscription';
+import { Button } from '@librechat/client';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 import store from '~/store';
@@ -39,13 +40,30 @@ const basePlans: BasePlan[] = [
     title: 'Standard',
     description: 'Perfect for everyday AI assistance',
     features: [
-      { text: 'Access to advanced AI models', icon: <Sparkles className="h-5 w-5" /> },
-      { text: 'Extended conversation context', icon: <MessageSquare className="h-5 w-5" /> },
-      { text: 'Image generation capabilities', icon: <Image className="h-5 w-5" /> },
-      { text: 'Enhanced memory and context', icon: <Cpu className="h-5 w-5" /> },
+      {
+        text: 'State of the Art AI models — ChatGPT, Claude, Gemini, Grok',
+        icon: <Sparkles className="h-5 w-5" />,
+      },
+      {
+        text: '300,000 tokens/month — Automatically refilled each month',
+        icon: <CheckCircle className="h-5 w-5" />,
+      },
+      {
+        text: 'Unlimited conversations — No message limits',
+        icon: <MessageSquare className="h-5 w-5" />,
+      },
+      {
+        text: 'All pre-built AI personas — Jimm.ai, Meal Planner, Travel Coordinator, Modern Finance Mentor, and more',
+        icon: <Users className="h-5 w-5" />,
+      },
+      {
+        text: 'No data harvesting — Your conversations stay private, always',
+        icon: <Lock className="h-5 w-5" />,
+      },
     ],
     buttonText: 'Get Standard',
-    buttonColor: 'bg-gray-900 hover:bg-gray-800',
+    buttonColor:
+      'bg-white hover:bg-gray-100 dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900',
     pricing: {
       monthly: {
         price: '$30',
@@ -59,14 +77,29 @@ const basePlans: BasePlan[] = [
   {
     id: 'plus',
     title: 'Plus',
-    description: 'More access to advanced intelligence',
+    description: 'Everything in Standard, plus:',
     features: [
-      { text: 'Solve complex problems', icon: <Sparkles className="h-5 w-5" /> },
-      { text: 'Long chats over multiple sessions', icon: <MessageSquare className="h-5 w-5" /> },
-      { text: 'Create more images, faster', icon: <Image className="h-5 w-5" /> },
-      { text: 'Remember goals and conversations', icon: <Cpu className="h-5 w-5" /> },
-      { text: 'Plan tasks with agent mode', icon: <Settings className="h-5 w-5" /> },
-      { text: 'Organize projects and customize', icon: <Blocks className="h-5 w-5" /> },
+      {
+        text: 'State of the Art AI models — ChatGPT, Claude, Gemini, Grok',
+        icon: <Sparkles className="h-5 w-5" />,
+      },
+      {
+        text: '+450,000 tokens/month — 750,000 total tokens, automatically refilled',
+        icon: <CheckCircle className="h-5 w-5" />,
+      },
+      {
+        text: 'Unlimited conversations — No message limits',
+        icon: <MessageSquare className="h-5 w-5" />,
+      },
+      {
+        text: 'All pre-built AI personas — Jimm.ai, Meal Planner, Travel Coordinator, Modern Finance Mentor, and more',
+        icon: <Users className="h-5 w-5" />,
+      },
+      {
+        text: 'No data harvesting — Your conversations stay private, always',
+        icon: <Lock className="h-5 w-5" />,
+      },
+      { text: 'Free Standard account for a family member', icon: <Heart className="h-5 w-5" /> },
     ],
     buttonText: 'Get Plus',
     buttonColor: 'bg-purple-600 hover:bg-purple-700',
@@ -99,7 +132,7 @@ export default function ChoosePlanModal() {
   // Get plans with current period pricing
   const plansWithPricing = basePlans.map((plan) => {
     const pricing = plan.pricing[period];
-    const priceDescription = period === 'monthly' ? 'USD / month' : 'USD / year';
+    const priceDescription = period === 'monthly' ? 'CAD / month' : 'CAD / year';
     const footnote =
       period === 'yearly' ? 'Billed annually. Cancel anytime.' : 'Cancel anytime. Limits apply.';
 
@@ -157,14 +190,16 @@ export default function ChoosePlanModal() {
                     {localize('com_subscription_select_subscription')}
                   </p>
                 </div>
-                <button
+                <Button
                   type="button"
-                  className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-border-xheavy focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-surface-primary dark:focus:ring-offset-surface-primary"
                   onClick={() => setShowChoosePlan(false)}
+                  variant="ghost"
+                  size="icon"
+                  className="opacity-70 hover:opacity-100"
                 >
                   <X className="h-6 w-6 text-text-primary" />
                   <span className="sr-only">{localize('com_ui_close')}</span>
-                </button>
+                </Button>
               </DialogTitle>
 
               <div className="max-h-[calc(90vh-120px)] overflow-y-auto px-6 pb-6">

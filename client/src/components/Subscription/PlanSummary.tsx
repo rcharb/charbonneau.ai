@@ -70,7 +70,7 @@ export default function PlanSummary({
         disabled={isDisabled || isProcessing}
         variant="default"
         size="lg"
-        className="mb-4 w-full bg-gray-900 hover:bg-gray-800"
+        className="mb-4 w-full bg-white hover:bg-gray-100 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
       >
         {isProcessing
           ? localize('com_subscription_processing')
