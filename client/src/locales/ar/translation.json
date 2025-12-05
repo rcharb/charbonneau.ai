@@ -737,5 +737,8 @@
   "com_ui_versions": "الإصدارات",
   "com_ui_yes": "نعم",
   "com_ui_zoom": "تكبير",
-  "com_user_message": "أنت"
+  "com_user_message": "أنت",
+  "com_subscription_monthly_short": "شهري",
+  "com_subscription_yearly": "سنوي",
+  "com_subscription_save": "وفر"
 }

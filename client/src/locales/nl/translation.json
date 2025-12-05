@@ -394,5 +394,8 @@
   "com_ui_terms_and_conditions": "Gebruiksvoorwaarden",
   "com_ui_unarchive": "Uit archiveren",
   "com_ui_unarchive_error": "Kan conversatie niet uit archiveren",
-  "com_ui_upload_success": "Bestand succesvol geüpload"
+  "com_ui_upload_success": "Bestand succesvol geüpload",
+  "com_subscription_monthly_short": "Maandelijks",
+  "com_subscription_yearly": "Jaarlijks",
+  "com_subscription_save": "Bespaar"
 }

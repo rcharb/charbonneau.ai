@@ -848,5 +848,8 @@
   "com_ui_write": "نوشتن",
   "com_ui_yes": "بله",
   "com_ui_zoom": "بزرگنمایی ضربه بزنید؛",
-  "com_user_message": "شما"
+  "com_user_message": "شما",
+  "com_subscription_monthly_short": "ماهانه",
+  "com_subscription_yearly": "سالانه",
+  "com_subscription_save": "صرفه‌جویی"
 }

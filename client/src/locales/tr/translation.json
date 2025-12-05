@@ -734,5 +734,8 @@
   "com_ui_view_source": "Kaynak sohbeti görüntüle",
   "com_ui_yes": "Evet",
   "com_ui_zoom": "Yakınlaştır",
-  "com_user_message": "Sen"
+  "com_user_message": "Sen",
+  "com_subscription_monthly_short": "Aylık",
+  "com_subscription_yearly": "Yıllık",
+  "com_subscription_save": "Tasarruf"
 }

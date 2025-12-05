@@ -1,15 +1,7 @@
+import { useState } from 'react';
 import { useRecoilState } from 'recoil';
-import {
-  Sparkles,
-  MessageSquare,
-  Image,
-  Cpu,
-  Settings,
-  Blocks,
-  Video,
-  Code,
-  X,
-} from 'lucide-react';
+import * as Tabs from '@radix-ui/react-tabs';
+import { Sparkles, MessageSquare, Image, Cpu, Settings, Blocks, X } from 'lucide-react';
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react';
 import { PlanCard } from '~/components/Subscription';
 import { useLocalize } from '~/hooks';
@@ -21,26 +13,30 @@ interface PlanFeature {
   icon: React.ReactNode;
 }
 
-interface SubscriptionPlan {
+interface BasePlan {
   id: string;
   title: string;
-  price: string;
-  priceDescription?: string;
   description: string;
   features: PlanFeature[];
   buttonText: string;
   buttonColor: string;
+  pricing: {
+    monthly: {
+      price: string;
+      badge?: string;
+    };
+    yearly: {
+      price: string;
+      badge?: string;
+    };
+  };
   badge?: string;
-  isCurrent?: boolean;
-  footnote?: string;
 }
 
-const plans: SubscriptionPlan[] = [
+const basePlans: BasePlan[] = [
   {
-    id: 'standard-monthly',
+    id: 'standard',
     title: 'Standard',
-    price: '$30',
-    priceDescription: 'USD / month',
     description: 'Perfect for everyday AI assistance',
     features: [
       { text: 'Access to advanced AI models', icon: <Sparkles className="h-5 w-5" /> },
@@ -50,31 +46,20 @@ const plans: SubscriptionPlan[] = [
     ],
     buttonText: 'Get Standard',
     buttonColor: 'bg-gray-900 hover:bg-gray-800',
+    pricing: {
+      monthly: {
+        price: '$30',
+      },
+      yearly: {
+        price: '$300',
+        badge: 'SAVE $60',
+      },
+    },
   },
   {
-    id: 'standard-yearly',
-    title: 'Standard',
-    price: '$300',
-    priceDescription: 'USD / year',
-    description: 'Best value for consistent users',
-    badge: 'SAVE $60',
-    features: [
-      { text: 'All Standard Monthly features', icon: <Sparkles className="h-5 w-5" /> },
-      { text: 'Priority support', icon: <MessageSquare className="h-5 w-5" /> },
-      { text: 'Save $60 per year', icon: <Image className="h-5 w-5" /> },
-      { text: 'Annual commitment discount', icon: <Cpu className="h-5 w-5" /> },
-    ],
-    buttonText: 'Get Standard',
-    buttonColor: 'bg-gray-900 hover:bg-gray-800',
-    footnote: 'Billed annually. Cancel anytime.',
-  },
-  {
-    id: 'plus-monthly',
+    id: 'plus',
     title: 'Plus',
-    price: '$50',
-    priceDescription: 'USD / month',
     description: 'More access to advanced intelligence',
-    badge: 'POPULAR',
     features: [
       { text: 'Solve complex problems', icon: <Sparkles className="h-5 w-5" /> },
       { text: 'Long chats over multiple sessions', icon: <MessageSquare className="h-5 w-5" /> },
@@ -85,28 +70,16 @@ const plans: SubscriptionPlan[] = [
     ],
     buttonText: 'Get Plus',
     buttonColor: 'bg-purple-600 hover:bg-purple-700',
-    footnote: 'Cancel anytime. Limits apply.',
-  },
-  {
-    id: 'plus-yearly',
-    title: 'Plus',
-    price: '$500',
-    priceDescription: 'USD / year',
-    description: 'Maximum productivity and savings',
-    badge: 'BEST VALUE',
-    features: [
-      { text: 'All Plus Monthly features', icon: <Sparkles className="h-5 w-5" /> },
-      { text: 'Unlimited conversations', icon: <MessageSquare className="h-5 w-5" /> },
-      { text: 'High-quality images at scale', icon: <Image className="h-5 w-5" /> },
-      { text: 'Maximum memory and context', icon: <Cpu className="h-5 w-5" /> },
-      { text: 'Advanced agent capabilities', icon: <Settings className="h-5 w-5" /> },
-      { text: 'Video creation with Sora', icon: <Video className="h-5 w-5" /> },
-      { text: 'Code generation with Codex', icon: <Code className="h-5 w-5" /> },
-      { text: 'Save $100 per year', icon: <Blocks className="h-5 w-5" /> },
-    ],
-    buttonText: 'Get Plus',
-    buttonColor: 'bg-purple-600 hover:bg-purple-700',
-    footnote: 'Billed annually. Save $100 per year. Cancel anytime.',
+    badge: 'POPULAR',
+    pricing: {
+      monthly: {
+        price: '$50',
+      },
+      yearly: {
+        price: '$500',
+        badge: 'SAVE $100',
+      },
+    },
   },
 ];
 
@@ -115,12 +88,34 @@ export default function ChoosePlanModal() {
   const [showChoosePlan, setShowChoosePlan] = useRecoilState(store.showChoosePlan);
   const [, setShowCheckout] = useRecoilState(store.showCheckout);
   const [, setCheckoutPlanId] = useRecoilState(store.checkoutPlanId);
+  const [period, setPeriod] = useState<'monthly' | 'yearly'>('monthly');
 
   const handleSelectPlan = (planId: string) => {
     setCheckoutPlanId(planId);
     setShowChoosePlan(false);
     setShowCheckout(true);
   };
+
+  // Get plans with current period pricing
+  const plansWithPricing = basePlans.map((plan) => {
+    const pricing = plan.pricing[period];
+    const priceDescription = period === 'monthly' ? 'USD / month' : 'USD / year';
+    const footnote =
+      period === 'yearly' ? 'Billed annually. Cancel anytime.' : 'Cancel anytime. Limits apply.';
+
+    return {
+      id: `${plan.id}-${period}`,
+      title: plan.title,
+      price: pricing.price,
+      priceDescription,
+      description: plan.description,
+      features: plan.features,
+      buttonText: plan.buttonText,
+      buttonColor: plan.buttonColor,
+      badge: pricing.badge || plan.badge,
+      footnote,
+    };
+  });
 
   return (
     <Transition appear show={showChoosePlan}>
@@ -147,7 +142,7 @@ export default function ChoosePlanModal() {
           <div className={cn('fixed inset-0 flex w-screen items-center justify-center p-4')}>
             <DialogPanel
               className={cn(
-                'max-h-[90vh] w-full max-w-[90vw] overflow-hidden rounded-xl bg-background shadow-2xl backdrop-blur-2xl animate-in sm:rounded-2xl md:max-w-[1200px]',
+                'max-h-[90vh] w-[800px] overflow-hidden rounded-xl bg-background shadow-2xl backdrop-blur-2xl animate-in sm:rounded-2xl',
               )}
             >
               <DialogTitle
@@ -173,9 +168,46 @@ export default function ChoosePlanModal() {
               </DialogTitle>
 
               <div className="max-h-[calc(90vh-120px)] overflow-y-auto px-6 pb-6">
+                {/* Period Toggle */}
+                <Tabs.Root
+                  value={period}
+                  onValueChange={(value) => setPeriod(value as 'monthly' | 'yearly')}
+                  className="mb-6"
+                >
+                  <div className="flex justify-center">
+                    <Tabs.List className="inline-flex rounded-xl bg-surface-secondary p-1">
+                      <Tabs.Trigger
+                        value="monthly"
+                        className={cn(
+                          'rounded-lg px-6 py-2.5 text-sm font-medium transition-all duration-200',
+                          'text-text-secondary hover:text-text-primary',
+                          'radix-state-active:bg-background radix-state-active:text-text-primary radix-state-active:shadow-sm',
+                        )}
+                      >
+                        {localize('com_subscription_monthly_short')}
+                      </Tabs.Trigger>
+                      <Tabs.Trigger
+                        value="yearly"
+                        className={cn(
+                          'rounded-lg px-6 py-2.5 text-sm font-medium transition-all duration-200',
+                          'text-text-secondary hover:text-text-primary',
+                          'radix-state-active:bg-background radix-state-active:text-text-primary radix-state-active:shadow-sm',
+                        )}
+                      >
+                        <span className="flex items-center gap-2">
+                          {localize('com_subscription_yearly')}
+                          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            {localize('com_subscription_save')}
+                          </span>
+                        </span>
+                      </Tabs.Trigger>
+                    </Tabs.List>
+                  </div>
+                </Tabs.Root>
+
                 {/* Plans Grid */}
-                <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  {plans.map((plan) => (
+                <div className="mb-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+                  {plansWithPricing.map((plan) => (
                     <PlanCard
                       key={plan.id}
                       id={plan.id}
@@ -187,7 +219,6 @@ export default function ChoosePlanModal() {
                       buttonText={plan.buttonText}
                       buttonColor={plan.buttonColor}
                       badge={plan.badge}
-                      isCurrent={plan.isCurrent}
                       footnote={plan.footnote}
                       onSelect={handleSelectPlan}
                     />

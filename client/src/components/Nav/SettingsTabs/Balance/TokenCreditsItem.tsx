@@ -68,6 +68,11 @@ const TokenCreditsItem: React.FC<TokenCreditsItemProps> = ({
     return 100000;
   };
 
+  // Calculate wasted (used) tokens
+  const totalCredits = getMaxCredits();
+  const wastedCredits = totalCredits - (tokenCredits ?? 0);
+  const wastedPercentage = (wastedCredits / totalCredits) * 100;
+
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800/50">
       <div className="flex items-center justify-between">
@@ -85,31 +90,45 @@ const TokenCreditsItem: React.FC<TokenCreditsItemProps> = ({
           </div>
         </div>
 
-        {/* Right Section: Token Credits Value */}
+        {/* Right Section: Wasted/Total Token Display */}
         <div className="text-right">
-          <span
-            className="text-2xl font-bold text-gray-900 dark:text-white"
-            role="note"
-            aria-label={`${tokenCredits} token credits`}
-          >
-            {formatCredits(tokenCredits)}
-          </span>
-          <span className="ml-1 text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-baseline gap-1">
+            <span
+              className="text-2xl font-bold text-gray-900 dark:text-white"
+              role="note"
+              aria-label={`${wastedCredits} tokens used out of ${totalCredits}`}
+            >
+              {formatCredits(wastedCredits)}
+            </span>
+            <span className="text-lg text-gray-400 dark:text-gray-500">/</span>
+            <span className="text-lg font-medium text-gray-600 dark:text-gray-300">
+              {formatCredits(totalCredits)}
+            </span>
+          </div>
+          <span className="text-xs text-gray-500 dark:text-gray-400">
             {localize('com_nav_balance_tokens')}
           </span>
         </div>
       </div>
 
       {/* Progress indicator for visual representation */}
-      {tokenCredits !== undefined && tokenCredits > 0 && (
+      {tokenCredits !== undefined && (
         <div className="mt-3">
           <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
             <div
               className={`h-full rounded-full transition-all duration-300 ${getProgressBarColor()}`}
               style={{
-                width: `${Math.min(100, (tokenCredits / getMaxCredits()) * 100)}%`,
+                width: `${Math.min(100, wastedPercentage)}%`,
               }}
             />
+          </div>
+          <div className="mt-1 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+            <span>
+              {localize('com_ui_used')}: {formatCredits(wastedCredits)}
+            </span>
+            <span>
+              {localize('com_ui_remaining')}: {formatCredits(tokenCredits ?? 0)}
+            </span>
           </div>
         </div>
       )}

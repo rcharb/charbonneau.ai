@@ -742,5 +742,8 @@
   "com_ui_write": "Psát",
   "com_ui_yes": "Ano",
   "com_ui_zoom": "Přiblížit",
-  "com_user_message": "Vy"
+  "com_user_message": "Vy",
+  "com_subscription_monthly_short": "Měsíční",
+  "com_subscription_yearly": "Roční",
+  "com_subscription_save": "Ušetřit"
 }

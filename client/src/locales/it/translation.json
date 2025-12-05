@@ -906,5 +906,8 @@
   "com_ui_write": "Scrittura",
   "com_ui_yes": "Sì",
   "com_ui_zoom": "Zoom",
-  "com_user_message": "Mostra nome utente nei messaggi"
+  "com_user_message": "Mostra nome utente nei messaggi",
+  "com_subscription_monthly_short": "Mensile",
+  "com_subscription_yearly": "Annuale",
+  "com_subscription_save": "Risparmia"
 }

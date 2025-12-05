@@ -728,5 +728,8 @@
   "com_ui_weekend_morning": "Udanego weekendu",
   "com_ui_yes": "Tak",
   "com_ui_zoom": "Powiększ",
-  "com_user_message": "Ty"
+  "com_user_message": "Ty",
+  "com_subscription_monthly_short": "Miesięcznie",
+  "com_subscription_yearly": "Rocznie",
+  "com_subscription_save": "Oszczędź"
 }

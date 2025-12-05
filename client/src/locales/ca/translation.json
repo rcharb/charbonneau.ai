@@ -904,5 +904,8 @@
   "com_ui_x_selected": "{{0}} seleccionats",
   "com_ui_yes": "Sí",
   "com_ui_zoom": "Zoom",
-  "com_user_message": "Tu"
+  "com_user_message": "Tu",
+  "com_subscription_monthly_short": "Mensual",
+  "com_subscription_yearly": "Anual",
+  "com_subscription_save": "Estalviar"
 }

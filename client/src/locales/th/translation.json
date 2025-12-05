@@ -831,5 +831,8 @@
   "com_ui_write": "การเขียน",
   "com_ui_yes": "ใช่",
   "com_ui_zoom": "ขยาย",
-  "com_user_message": "คุณ"
+  "com_user_message": "คุณ",
+  "com_subscription_monthly_short": "รายเดือน",
+  "com_subscription_yearly": "รายปี",
+  "com_subscription_save": "ประหยัด"
 }

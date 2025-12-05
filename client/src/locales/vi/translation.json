@@ -400,5 +400,8 @@
   "com_ui_x_selected": "{{0}} đã chọn",
   "com_ui_yes": "Đồng ý",
   "com_ui_zoom": "Phóng",
-  "com_warning_resubmit_unsupported": "Điểm cuối này không hỗ trợ việc gửi lại tin nhắn AI."
+  "com_warning_resubmit_unsupported": "Điểm cuối này không hỗ trợ việc gửi lại tin nhắn AI.",
+  "com_subscription_monthly_short": "Hàng tháng",
+  "com_subscription_yearly": "Hàng năm",
+  "com_subscription_save": "Tiết kiệm"
 }

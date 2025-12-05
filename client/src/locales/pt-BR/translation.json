@@ -1034,5 +1034,8 @@
   "com_ui_x_selected": "{{0}} selecionado",
   "com_ui_yes": "Sim",
   "com_ui_zoom": "Zoom",
-  "com_user_message": "Você"
+  "com_user_message": "Você",
+  "com_subscription_monthly_short": "Mensal",
+  "com_subscription_yearly": "Anual",
+  "com_subscription_save": "Economizar"
 }

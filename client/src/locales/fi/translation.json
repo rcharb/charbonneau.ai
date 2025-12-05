@@ -618,5 +618,8 @@
   "com_ui_version_var": "Versio {{0}}",
   "com_ui_versions": "Versiot",
   "com_ui_yes": "Kyllä",
-  "com_user_message": "Sinä"
+  "com_user_message": "Sinä",
+  "com_subscription_monthly_short": "Kuukausittain",
+  "com_subscription_yearly": "Vuosittain",
+  "com_subscription_save": "Säästä"
 }
