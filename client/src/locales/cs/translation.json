@@ -745,5 +745,6 @@
   "com_user_message": "Vy",
   "com_subscription_monthly_short": "Měsíční",
   "com_subscription_yearly": "Roční",
-  "com_subscription_save": "Ušetřit"
+  "com_subscription_save": "Ušetřit",
+  "com_subscription_currency": "Měna"
 }

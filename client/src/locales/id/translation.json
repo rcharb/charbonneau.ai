@@ -311,5 +311,6 @@
   "com_user_message": "Kamu",
   "com_subscription_monthly_short": "Bulanan",
   "com_subscription_yearly": "Tahunan",
-  "com_subscription_save": "Hemat"
+  "com_subscription_save": "Hemat",
+  "com_subscription_currency": "Mata Uang"
 }

@@ -20,6 +20,10 @@ const staticAtoms = {
   checkoutPlanId: atom<string | null>({ key: 'checkoutPlanId', default: null }),
 };
 
+const subscriptionAtoms = {
+  selectedCurrency: atomWithLocalStorage<'CAD' | 'USD'>('selectedCurrency', 'CAD'),
+};
+
 const localStorageAtoms = {
   // General settings
   autoScroll: atomWithLocalStorage('autoScroll', false),
@@ -78,4 +82,4 @@ const localStorageAtoms = {
   UsernameDisplay: atomWithLocalStorage('UsernameDisplay', true),
 };
 
-export default { ...staticAtoms, ...localStorageAtoms };
+export default { ...staticAtoms, ...localStorageAtoms, ...subscriptionAtoms };

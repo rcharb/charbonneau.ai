@@ -851,5 +851,6 @@
   "com_user_message": "شما",
   "com_subscription_monthly_short": "ماهانه",
   "com_subscription_yearly": "سالانه",
-  "com_subscription_save": "صرفه‌جویی"
+  "com_subscription_save": "صرفه‌جویی",
+  "com_subscription_currency": "ارز"
 }

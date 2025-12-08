@@ -10,9 +10,9 @@ const { logger } = require('~/config');
 const router = express.Router();
 
 // Price IDs should be set in environment variables
-// Format: STRIPE_PRICE_STANDARD_MONTHLY, STRIPE_PRICE_STANDARD_YEARLY, etc.
-const getPriceId = (plan, period) => {
-  const key = `STRIPE_PRICE_${plan.toUpperCase()}_${period.toUpperCase()}`;
+// Format: STRIPE_PRICE_STANDARD_MONTHLY_CAD, STRIPE_PRICE_STANDARD_MONTHLY_USD, etc.
+const getPriceId = (plan, period, currency = 'CAD') => {
+  const key = `STRIPE_PRICE_${plan.toUpperCase()}_${period.toUpperCase()}_${currency.toUpperCase()}`;
   return process.env[key];
 };
 
@@ -26,16 +26,31 @@ const getTokensForPlan = (plan) => {
 };
 
 // Helper to get plan from price ID
+// Checks both CAD and USD price IDs
 const getPlanFromPriceId = (priceId) => {
-  const standardMonthly = process.env.STRIPE_PRICE_STANDARD_MONTHLY;
-  const standardYearly = process.env.STRIPE_PRICE_STANDARD_YEARLY;
-  const plusMonthly = process.env.STRIPE_PRICE_PLUS_MONTHLY;
-  const plusYearly = process.env.STRIPE_PRICE_PLUS_YEARLY;
+  const standardMonthlyCAD = process.env.STRIPE_PRICE_STANDARD_MONTHLY_CAD;
+  const standardYearlyCAD = process.env.STRIPE_PRICE_STANDARD_YEARLY_CAD;
+  const plusMonthlyCAD = process.env.STRIPE_PRICE_PLUS_MONTHLY_CAD;
+  const plusYearlyCAD = process.env.STRIPE_PRICE_PLUS_YEARLY_CAD;
+  const standardMonthlyUSD = process.env.STRIPE_PRICE_STANDARD_MONTHLY_USD;
+  const standardYearlyUSD = process.env.STRIPE_PRICE_STANDARD_YEARLY_USD;
+  const plusMonthlyUSD = process.env.STRIPE_PRICE_PLUS_MONTHLY_USD;
+  const plusYearlyUSD = process.env.STRIPE_PRICE_PLUS_YEARLY_USD;
 
-  if (priceId === standardMonthly || priceId === standardYearly) {
+  if (
+    priceId === standardMonthlyCAD ||
+    priceId === standardYearlyCAD ||
+    priceId === standardMonthlyUSD ||
+    priceId === standardYearlyUSD
+  ) {
     return 'standard';
   }
-  if (priceId === plusMonthly || priceId === plusYearly) {
+  if (
+    priceId === plusMonthlyCAD ||
+    priceId === plusYearlyCAD ||
+    priceId === plusMonthlyUSD ||
+    priceId === plusYearlyUSD
+  ) {
     return 'plus';
   }
   return null;
@@ -43,10 +58,17 @@ const getPlanFromPriceId = (priceId) => {
 
 // Helper to check if price ID is for a yearly subscription
 const isYearlySubscription = (priceId) => {
-  const standardYearly = process.env.STRIPE_PRICE_STANDARD_YEARLY;
-  const plusYearly = process.env.STRIPE_PRICE_PLUS_YEARLY;
+  const standardYearlyCAD = process.env.STRIPE_PRICE_STANDARD_YEARLY_CAD;
+  const plusYearlyCAD = process.env.STRIPE_PRICE_PLUS_YEARLY_CAD;
+  const standardYearlyUSD = process.env.STRIPE_PRICE_STANDARD_YEARLY_USD;
+  const plusYearlyUSD = process.env.STRIPE_PRICE_PLUS_YEARLY_USD;
 
-  return priceId === standardYearly || priceId === plusYearly;
+  return (
+    priceId === standardYearlyCAD ||
+    priceId === plusYearlyCAD ||
+    priceId === standardYearlyUSD ||
+    priceId === plusYearlyUSD
+  );
 };
 
 /**
@@ -112,10 +134,15 @@ async function updateBalanceForSubscription(userId, subscription) {
 
 router.post('/create-setup-intent', requireJwtAuth, async (req, res) => {
   try {
-    const { planId } = req.body;
+    const { planId, currency = 'CAD' } = req.body;
 
     if (!planId) {
       return res.status(400).json({ error: 'planId is required' });
+    }
+
+    // Validate currency
+    if (currency !== 'CAD' && currency !== 'USD') {
+      return res.status(400).json({ error: 'Invalid currency. Must be CAD or USD' });
     }
 
     // Parse planId to extract plan and period
@@ -127,10 +154,10 @@ router.post('/create-setup-intent', requireJwtAuth, async (req, res) => {
       });
     }
 
-    const priceId = getPriceId(plan, period);
+    const priceId = getPriceId(plan, period, currency);
     if (!priceId) {
-      logger.error(`Price ID not found for ${plan} ${period}`);
-      return res.status(400).json({ error: 'Invalid subscription plan' });
+      logger.error(`Price ID not found for ${plan} ${period} ${currency}`);
+      return res.status(400).json({ error: 'Invalid subscription plan or currency' });
     }
 
     // Create or retrieve customer
@@ -175,10 +202,15 @@ router.post('/create-setup-intent', requireJwtAuth, async (req, res) => {
 
 router.post('/create-subscription', requireJwtAuth, async (req, res) => {
   try {
-    const { setupIntentId, planId } = req.body;
+    const { setupIntentId, planId, currency = 'CAD' } = req.body;
 
     if (!setupIntentId || !planId) {
       return res.status(400).json({ error: 'setupIntentId and planId are required' });
+    }
+
+    // Validate currency
+    if (currency !== 'CAD' && currency !== 'USD') {
+      return res.status(400).json({ error: 'Invalid currency. Must be CAD or USD' });
     }
 
     // Retrieve the setup intent to get payment method
@@ -195,10 +227,10 @@ router.post('/create-subscription', requireJwtAuth, async (req, res) => {
 
     // Parse planId
     const [plan, period] = planId.split('-');
-    const priceId = getPriceId(plan, period);
+    const priceId = getPriceId(plan, period, currency);
 
     if (!priceId) {
-      return res.status(400).json({ error: 'Invalid subscription plan' });
+      return res.status(400).json({ error: 'Invalid subscription plan or currency' });
     }
 
     // Get customer from setup intent

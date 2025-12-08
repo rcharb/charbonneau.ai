@@ -397,5 +397,6 @@
   "com_ui_upload_success": "Bestand succesvol geüpload",
   "com_subscription_monthly_short": "Maandelijks",
   "com_subscription_yearly": "Jaarlijks",
-  "com_subscription_save": "Bespaar"
+  "com_subscription_save": "Bespaar",
+  "com_subscription_currency": "Valuta"
 }

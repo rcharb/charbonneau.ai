@@ -834,5 +834,6 @@
   "com_user_message": "คุณ",
   "com_subscription_monthly_short": "รายเดือน",
   "com_subscription_yearly": "รายปี",
-  "com_subscription_save": "ประหยัด"
+  "com_subscription_save": "ประหยัด",
+  "com_subscription_currency": "สกุลเงิน"
 }

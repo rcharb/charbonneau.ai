@@ -907,5 +907,6 @@
   "com_user_message": "Tu",
   "com_subscription_monthly_short": "Mensual",
   "com_subscription_yearly": "Anual",
-  "com_subscription_save": "Estalviar"
+  "com_subscription_save": "Estalviar",
+  "com_subscription_currency": "Moneda"
 }

@@ -594,6 +594,7 @@
   "com_sources_title": "Sources",
   "com_subscription_annual": "Abonnement annuel",
   "com_subscription_billing_address": "Adresse de facturation",
+  "com_subscription_currency": "Devise",
   "com_subscription_current_plan": "Votre forfait actuel",
   "com_subscription_due_today": "Dû aujourd'hui",
   "com_subscription_monthly": "Abonnement mensuel",

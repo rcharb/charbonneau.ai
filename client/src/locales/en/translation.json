@@ -645,6 +645,7 @@
   "com_sources_title": "Sources",
   "com_subscription_annual": "Annual subscription",
   "com_subscription_billing_address": "Billing address",
+  "com_subscription_currency": "Currency",
   "com_subscription_current_plan": "Your current plan",
   "com_subscription_due_today": "Due today",
   "com_subscription_monthly": "Monthly subscription",

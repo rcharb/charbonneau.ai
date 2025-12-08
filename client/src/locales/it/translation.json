@@ -909,5 +909,6 @@
   "com_user_message": "Mostra nome utente nei messaggi",
   "com_subscription_monthly_short": "Mensile",
   "com_subscription_yearly": "Annuale",
-  "com_subscription_save": "Risparmia"
+  "com_subscription_save": "Risparmia",
+  "com_subscription_currency": "Valuta"
 }

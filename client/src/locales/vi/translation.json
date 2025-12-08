@@ -403,5 +403,6 @@
   "com_warning_resubmit_unsupported": "Điểm cuối này không hỗ trợ việc gửi lại tin nhắn AI.",
   "com_subscription_monthly_short": "Hàng tháng",
   "com_subscription_yearly": "Hàng năm",
-  "com_subscription_save": "Tiết kiệm"
+  "com_subscription_save": "Tiết kiệm",
+  "com_subscription_currency": "Tiền tệ"
 }

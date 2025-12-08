@@ -65,5 +65,6 @@
   "com_nav_language": "ენა",
   "com_subscription_monthly_short": "ყოველთვიური",
   "com_subscription_yearly": "წლიური",
-  "com_subscription_save": "დაზოგვა"
+  "com_subscription_save": "დაზოგვა",
+  "com_subscription_currency": "ვალუტა"
 }

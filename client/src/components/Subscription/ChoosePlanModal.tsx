@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { useRecoilState } from 'recoil';
+import { useRecoilState, useRecoilValue } from 'recoil';
 import * as Tabs from '@radix-ui/react-tabs';
 import { Sparkles, MessageSquare, Lock, Users, Heart, CheckCircle, X } from 'lucide-react';
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react';
-import { PlanCard } from '~/components/Subscription';
+import { PlanCard, CurrencySelector } from '~/components/Subscription';
 import { Button } from '@librechat/client';
 import { useLocalize } from '~/hooks';
-import { cn } from '~/utils';
+import { cn, formatCurrency, getPriceInCurrency, type Currency } from '~/utils';
 import store from '~/store';
 
 interface PlanFeature {
@@ -122,6 +122,7 @@ export default function ChoosePlanModal() {
   const [, setShowCheckout] = useRecoilState(store.showCheckout);
   const [, setCheckoutPlanId] = useRecoilState(store.checkoutPlanId);
   const [period, setPeriod] = useState<'monthly' | 'yearly'>('monthly');
+  const selectedCurrency = useRecoilValue(store.selectedCurrency) as Currency;
 
   const handleSelectPlan = (planId: string) => {
     setCheckoutPlanId(planId);
@@ -129,23 +130,44 @@ export default function ChoosePlanModal() {
     setShowCheckout(true);
   };
 
+  // Helper to parse price string (e.g., "C$30" -> 30)
+  const parsePrice = (priceStr: string): number => {
+    return parseFloat(priceStr.replace(/[C$]/g, ''));
+  };
+
   // Get plans with current period pricing
   const plansWithPricing = basePlans.map((plan) => {
     const pricing = plan.pricing[period];
-    const priceDescription = period === 'monthly' ? 'CAD / month' : 'CAD / year';
+    const cadPrice = parsePrice(pricing.price);
+    const displayPrice = getPriceInCurrency(cadPrice, selectedCurrency);
+    const formattedPrice = formatCurrency(displayPrice, selectedCurrency);
+
+    const priceDescription =
+      period === 'monthly' ? `${selectedCurrency} / month` : `${selectedCurrency} / year`;
     const footnote =
       period === 'yearly' ? 'Billed annually. Cancel anytime.' : 'Cancel anytime. Limits apply.';
+
+    // Convert badge savings if it exists
+    let convertedBadge = pricing.badge || plan.badge;
+    if (selectedCurrency === 'USD' && pricing.badge) {
+      const savingsMatch = pricing.badge.match(/SAVE C\$(\d+)/);
+      if (savingsMatch) {
+        const savingsCAD = parseFloat(savingsMatch[1]);
+        const savingsUSD = getPriceInCurrency(savingsCAD, 'USD');
+        convertedBadge = `SAVE ${formatCurrency(savingsUSD, 'USD')}`;
+      }
+    }
 
     return {
       id: `${plan.id}-${period}`,
       title: plan.title,
-      price: pricing.price,
+      price: formattedPrice,
       priceDescription,
       description: plan.description,
       features: plan.features,
       buttonText: plan.buttonText,
       buttonColor: plan.buttonColor,
-      badge: pricing.badge || plan.badge,
+      badge: convertedBadge,
       footnote,
     };
   });
@@ -203,6 +225,11 @@ export default function ChoosePlanModal() {
               </DialogTitle>
 
               <div className="max-h-[calc(90vh-120px)] overflow-y-auto px-6 pb-6">
+                {/* Currency Selector */}
+                <div className="mb-4 flex justify-end">
+                  <CurrencySelector />
+                </div>
+
                 {/* Period Toggle */}
                 <Tabs.Root
                   value={period}

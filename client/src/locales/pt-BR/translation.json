@@ -1037,5 +1037,6 @@
   "com_user_message": "Você",
   "com_subscription_monthly_short": "Mensal",
   "com_subscription_yearly": "Anual",
-  "com_subscription_save": "Economizar"
+  "com_subscription_save": "Economizar",
+  "com_subscription_currency": "Moeda"
 }

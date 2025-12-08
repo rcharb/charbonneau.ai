@@ -643,6 +643,7 @@
   "com_sources_title": "来源",
   "com_subscription_annual": "年度订阅",
   "com_subscription_billing_address": "账单地址",
+  "com_subscription_currency": "货币",
   "com_subscription_current_plan": "您当前的方案",
   "com_subscription_due_today": "今日应付",
   "com_subscription_monthly": "每月订阅",

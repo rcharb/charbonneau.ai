@@ -737,5 +737,6 @@
   "com_user_message": "Sen",
   "com_subscription_monthly_short": "Aylık",
   "com_subscription_yearly": "Yıllık",
-  "com_subscription_save": "Tasarruf"
+  "com_subscription_save": "Tasarruf",
+  "com_subscription_currency": "Para Birimi"
 }

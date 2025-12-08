@@ -1,6 +1,8 @@
 import { Separator } from '@librechat/client';
+import { useRecoilValue } from 'recoil';
 import { useLocalize } from '~/hooks';
-import { formatCAD } from '~/utils';
+import { formatCurrency, getPriceInCurrency, type Currency } from '~/utils';
+import store from '~/store';
 
 interface PriceBreakdownProps {
   period: 'monthly' | 'yearly';
@@ -22,6 +24,15 @@ export default function PriceBreakdown({
   dueToday = 0,
 }: PriceBreakdownProps) {
   const localize = useLocalize();
+  const selectedCurrency = useRecoilValue(store.selectedCurrency) as Currency;
+
+  // Convert prices from CAD to selected currency
+  const displayPrice = getPriceInCurrency(price, selectedCurrency);
+  const displayTax = getPriceInCurrency(tax, selectedCurrency);
+  const displayDueToday = getPriceInCurrency(dueToday, selectedCurrency);
+  const displayPromotionAmount = promotion
+    ? getPriceInCurrency(promotion.amount, selectedCurrency)
+    : 0;
 
   return (
     <div className="mb-6 pt-6">
@@ -33,7 +44,9 @@ export default function PriceBreakdown({
               ? localize('com_subscription_monthly')
               : localize('com_subscription_annual')}
           </span>
-          <span className="font-medium text-gray-900 dark:text-white">{formatCAD(price)}</span>
+          <span className="font-medium text-gray-900 dark:text-white">
+            {formatCurrency(displayPrice, selectedCurrency)}
+          </span>
         </div>
 
         {promotion && (
@@ -41,7 +54,7 @@ export default function PriceBreakdown({
             <div className="flex justify-between text-sm">
               <span className="text-gray-600 dark:text-gray-400">{promotion.label}</span>
               <span className="font-medium text-gray-900 dark:text-white">
-                -{formatCAD(promotion.amount)}
+                -{formatCurrency(displayPromotionAmount, selectedCurrency)}
               </span>
             </div>
             {promotion.description && (
@@ -54,7 +67,9 @@ export default function PriceBreakdown({
           <span className="text-gray-600 dark:text-gray-400">
             {localize('com_subscription_tax')}
           </span>
-          <span className="font-medium text-gray-900 dark:text-white">{formatCAD(tax)}</span>
+          <span className="font-medium text-gray-900 dark:text-white">
+            {formatCurrency(displayTax, selectedCurrency)}
+          </span>
         </div>
 
         <Separator className="my-3" />
@@ -63,7 +78,9 @@ export default function PriceBreakdown({
           <span className="text-gray-900 dark:text-white">
             {localize('com_subscription_due_today')}
           </span>
-          <span className="text-gray-900 dark:text-white">{formatCAD(dueToday)}</span>
+          <span className="text-gray-900 dark:text-white">
+            {formatCurrency(displayDueToday, selectedCurrency)}
+          </span>
         </div>
       </div>
     </div>

@@ -4,6 +4,7 @@ import type { UseMutationResult } from '@tanstack/react-query';
 
 export interface CreateSetupIntentRequest {
   planId: string;
+  currency?: 'CAD' | 'USD';
 }
 
 export interface CreateSetupIntentResponse {
@@ -14,6 +15,7 @@ export interface CreateSetupIntentResponse {
 export interface CreateSubscriptionRequest {
   setupIntentId: string;
   planId: string;
+  currency?: 'CAD' | 'USD';
 }
 
 export interface CreateSubscriptionResponse {

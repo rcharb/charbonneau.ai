@@ -827,5 +827,6 @@
   "com_user_message": "Usted",
   "com_subscription_monthly_short": "Mensual",
   "com_subscription_yearly": "Anual",
-  "com_subscription_save": "Ahorrar"
+  "com_subscription_save": "Ahorrar",
+  "com_subscription_currency": "Moneda"
 }

@@ -851,5 +851,6 @@
   "com_user_message": "Ön",
   "com_subscription_monthly_short": "Havi",
   "com_subscription_yearly": "Éves",
-  "com_subscription_save": "Megtakarítás"
+  "com_subscription_save": "Megtakarítás",
+  "com_subscription_currency": "Pénznem"
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useRecoilState } from 'recoil';
+import { useRecoilState, useRecoilValue } from 'recoil';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Zap, Paperclip, Image as ImageIcon, FileText, ChevronLeft, X } from 'lucide-react';
@@ -12,7 +12,7 @@ import {
   useCreateSetupIntentMutation,
   useCreateSubscriptionMutation,
 } from '~/data-provider/Stripe';
-import { cn } from '~/utils';
+import { cn, type Currency } from '~/utils';
 import store from '~/store';
 
 const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
@@ -37,6 +37,7 @@ function CheckoutForm({ planDetails, setupIntentId }: CheckoutFormProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const createSubscriptionMutation = useCreateSubscriptionMutation();
   const [, setShowCheckout] = useRecoilState(store.showCheckout);
+  const selectedCurrency = useRecoilValue(store.selectedCurrency) as Currency;
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) {
@@ -77,7 +78,7 @@ function CheckoutForm({ planDetails, setupIntentId }: CheckoutFormProps) {
       // Setup Intent succeeded, now create the subscription
       const planId = `${planDetails.plan}-${planDetails.period}`;
       createSubscriptionMutation.mutate(
-        { setupIntentId, planId },
+        { setupIntentId, planId, currency: selectedCurrency },
         {
           onSuccess: (data) => {
             if (data.clientSecret) {
@@ -190,6 +191,7 @@ export default function CheckoutModal() {
   const [setupIntentId, setSetupIntentId] = useState<string | null>(null);
   const [planDetails, setPlanDetails] = useState<PlanDetails | null>(null);
   const createSetupIntentMutation = useCreateSetupIntentMutation();
+  const selectedCurrency = useRecoilValue(store.selectedCurrency) as Currency;
 
   useEffect(() => {
     if (!showCheckout || !checkoutPlanId) {
@@ -220,7 +222,7 @@ export default function CheckoutModal() {
 
     // Create setup intent
     createSetupIntentMutation.mutate(
-      { planId: checkoutPlanId },
+      { planId: checkoutPlanId, currency: selectedCurrency },
       {
         onSuccess: (data) => {
           setClientSecret(data.clientSecret);
@@ -232,7 +234,7 @@ export default function CheckoutModal() {
       },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showCheckout, checkoutPlanId]);
+  }, [showCheckout, checkoutPlanId, selectedCurrency]);
 
   const handleClose = () => {
     setShowCheckout(false);
