@@ -1,5 +1,6 @@
 import { Separator } from '@librechat/client';
 import { useLocalize } from '~/hooks';
+import { formatCAD } from '~/utils';
 
 interface PriceBreakdownProps {
   period: 'monthly' | 'yearly';
@@ -32,7 +33,7 @@ export default function PriceBreakdown({
               ? localize('com_subscription_monthly')
               : localize('com_subscription_annual')}
           </span>
-          <span className="font-medium text-gray-900 dark:text-white">${price.toFixed(2)}</span>
+          <span className="font-medium text-gray-900 dark:text-white">{formatCAD(price)}</span>
         </div>
 
         {promotion && (
@@ -40,7 +41,7 @@ export default function PriceBreakdown({
             <div className="flex justify-between text-sm">
               <span className="text-gray-600 dark:text-gray-400">{promotion.label}</span>
               <span className="font-medium text-gray-900 dark:text-white">
-                -${promotion.amount.toFixed(2)}
+                -{formatCAD(promotion.amount)}
               </span>
             </div>
             {promotion.description && (
@@ -53,7 +54,7 @@ export default function PriceBreakdown({
           <span className="text-gray-600 dark:text-gray-400">
             {localize('com_subscription_tax')}
           </span>
-          <span className="font-medium text-gray-900 dark:text-white">${tax.toFixed(2)}</span>
+          <span className="font-medium text-gray-900 dark:text-white">{formatCAD(tax)}</span>
         </div>
 
         <Separator className="my-3" />
@@ -62,7 +63,7 @@ export default function PriceBreakdown({
           <span className="text-gray-900 dark:text-white">
             {localize('com_subscription_due_today')}
           </span>
-          <span className="text-gray-900 dark:text-white">${dueToday.toFixed(2)}</span>
+          <span className="text-gray-900 dark:text-white">{formatCAD(dueToday)}</span>
         </div>
       </div>
     </div>
