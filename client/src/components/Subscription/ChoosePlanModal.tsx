@@ -20,7 +20,11 @@ interface BasePlan {
   description: string;
   features: PlanFeature[];
   buttonText: string;
-  buttonColor: string;
+  cardBgColor: string;
+  cardBorderColor: string;
+  contentTextColor: string;
+  buttonTextColor: string;
+  buttonBgColor: string;
   pricing: {
     monthly: {
       price: string;
@@ -62,8 +66,11 @@ const basePlans: BasePlan[] = [
       },
     ],
     buttonText: 'Get Standard',
-    buttonColor:
-      'bg-white hover:bg-gray-100 dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900',
+    cardBgColor: 'bg-white dark:bg-gray-800',
+    cardBorderColor: 'border-gray-200 dark:border-gray-700',
+    contentTextColor: 'text-[#0d0d0d] dark:text-[#FFFFFF]',
+    buttonTextColor: 'text-[#FFFFFF] dark:text-[#000000]',
+    buttonBgColor: 'bg-[#0d0d0d] hover:bg-[#212121] dark:bg-[#FFFFFF] dark:hover:bg-[#E3E3E3]',
     pricing: {
       monthly: {
         price: 'C$30',
@@ -102,7 +109,11 @@ const basePlans: BasePlan[] = [
       { text: 'Free Standard account for a family member', icon: <Heart className="h-5 w-5" /> },
     ],
     buttonText: 'Get Plus',
-    buttonColor: 'bg-purple-600 hover:bg-purple-700',
+    cardBgColor: 'bg-[#FCEBFF] dark:bg-[#2a103a]',
+    cardBorderColor: 'border-[#D7C2FF] dark:border-[#4A3559]',
+    contentTextColor: 'text-[#0d0d0d] dark:text-[#FFFFFF]',
+    buttonTextColor: 'text-[#FFFFFF]',
+    buttonBgColor: 'bg-purple-600 hover:bg-purple-700',
     badge: 'POPULAR',
     pricing: {
       monthly: {
@@ -166,8 +177,12 @@ export default function ChoosePlanModal() {
       description: plan.description,
       features: plan.features,
       buttonText: plan.buttonText,
-      buttonColor: plan.buttonColor,
-      badge: convertedBadge,
+      cardBgColor: plan.cardBgColor,
+      cardBorderColor: plan.cardBorderColor,
+      contentTextColor: plan.contentTextColor,
+      buttonTextColor: plan.buttonTextColor,
+      buttonBgColor: plan.buttonBgColor,
+      badge: pricing.badge || plan.badge,
       footnote,
     };
   });
@@ -279,7 +294,11 @@ export default function ChoosePlanModal() {
                       description={plan.description}
                       features={plan.features}
                       buttonText={plan.buttonText}
-                      buttonColor={plan.buttonColor}
+                      cardBgColor={plan.cardBgColor}
+                      cardBorderColor={plan.cardBorderColor}
+                      contentTextColor={plan.contentTextColor}
+                      buttonTextColor={plan.buttonTextColor}
+                      buttonBgColor={plan.buttonBgColor}
                       badge={plan.badge}
                       footnote={plan.footnote}
                       onSelect={handleSelectPlan}
