@@ -21,15 +21,20 @@ export default function PriceBreakdown({
   price,
   tax = 0,
   promotion,
-  dueToday = 0,
+  dueToday,
 }: PriceBreakdownProps) {
   const localize = useLocalize();
   const selectedCurrency = useRecoilValue(store.selectedCurrency) as Currency;
 
+  // Calculate dueToday as price - tax (and subtract promotion if present)
+  // Only use provided dueToday if it's explicitly set and greater than 0
+  const calculatedDueToday: number =
+    dueToday !== undefined && dueToday > 0 ? dueToday : price - tax - (promotion?.amount || 0);
+
   // Convert prices from CAD to selected currency
   const displayPrice = getPriceInCurrency(price, selectedCurrency);
   const displayTax = getPriceInCurrency(tax, selectedCurrency);
-  const displayDueToday = getPriceInCurrency(dueToday, selectedCurrency);
+  const displayDueToday = getPriceInCurrency(calculatedDueToday, selectedCurrency);
   const displayPromotionAmount = promotion
     ? getPriceInCurrency(promotion.amount, selectedCurrency)
     : 0;
