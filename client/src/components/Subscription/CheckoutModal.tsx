@@ -332,7 +332,7 @@ export default function CheckoutModal() {
                     size="icon"
                     className="opacity-70 hover:opacity-100"
                   >
-                    <ChevronLeft className="h-6 w-6" />
+                    <ChevronLeft className="h-6 w-6 text-text-primary" />
                     <span className="sr-only">{localize('com_ui_back')}</span>
                   </Button>
                   <h2 className="text-2xl font-semibold text-text-primary">
