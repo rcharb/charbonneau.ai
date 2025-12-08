@@ -66,11 +66,11 @@ const basePlans: BasePlan[] = [
       'bg-white hover:bg-gray-100 dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900',
     pricing: {
       monthly: {
-        price: '$30',
+        price: 'C$30',
       },
       yearly: {
-        price: '$300',
-        badge: 'SAVE $60',
+        price: 'C$300',
+        badge: 'SAVE C$60',
       },
     },
   },
@@ -106,11 +106,11 @@ const basePlans: BasePlan[] = [
     badge: 'POPULAR',
     pricing: {
       monthly: {
-        price: '$50',
+        price: 'C$50',
       },
       yearly: {
-        price: '$500',
-        badge: 'SAVE $100',
+        price: 'C$500',
+        badge: 'SAVE C$100',
       },
     },
   },

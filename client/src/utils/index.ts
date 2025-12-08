@@ -21,6 +21,7 @@ export * from './localStorage';
 export * from './promptGroups';
 export * from './email';
 export * from './timestamps';
+export * from './currency';
 export { default as cn } from './cn';
 export { default as logger } from './logger';
 export { default as scaleImage } from './scaleImage';
