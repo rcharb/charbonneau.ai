@@ -42,7 +42,9 @@ export default function PlanCard({
   const localize = useLocalize();
 
   return (
-    <div className={`relative flex flex-col rounded-lg border shadow-sm transition-shadow hover:shadow-md ${cardBgColor} ${cardBorderColor}`}>
+    <div
+      className={`relative flex flex-col rounded-lg border shadow-sm transition-shadow hover:shadow-md ${cardBgColor} ${cardBorderColor}`}
+    >
       {/* Badge */}
       {badge && (
         <div className="absolute right-4 top-4">
@@ -89,9 +91,7 @@ export default function PlanCard({
         <ul className="space-y-3">
           {features.map((feature, index) => (
             <li key={index} className="flex items-start gap-3">
-              <span className={`mt-0.5 flex-shrink-0 ${contentTextColor}`}>
-                {feature.icon}
-              </span>
+              <span className={`mt-0.5 flex-shrink-0 ${contentTextColor}`}>{feature.icon}</span>
               <span className={`text-sm ${contentTextColor}`}>{feature.text}</span>
             </li>
           ))}

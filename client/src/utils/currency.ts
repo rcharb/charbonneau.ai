@@ -13,11 +13,11 @@ export const CURRENCY_SYMBOL_USD = '$' as const;
 // Maps CAD prices to USD prices (exact pricing, not conversion rate)
 const PRICE_MAP: Record<number, number> = {
   // Standard plan
-  30: 22, // Monthly: CAD $30 -> USD $22
-  300: 220, // Yearly: CAD $300 -> USD $220
+  30: 25, // Monthly: CAD $30 -> USD $25
+  300: 250, // Yearly: CAD $300 -> USD $250
   // Plus plan
-  50: 37, // Monthly: CAD $50 -> USD $37
-  500: 370, // Yearly: CAD $500 -> USD $370
+  50: 35, // Monthly: CAD $50 -> USD $35
+  500: 350, // Yearly: CAD $500 -> USD $350
 };
 
 // Fallback conversion rate for prices not in the map
