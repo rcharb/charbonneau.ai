@@ -15,6 +15,13 @@ const staticAtoms = {
     default: SettingsViews.default,
   }),
   showPopover: atom<boolean>({ key: 'showPopover', default: false }),
+  showChoosePlan: atom<boolean>({ key: 'showChoosePlan', default: false }),
+  showCheckout: atom<boolean>({ key: 'showCheckout', default: false }),
+  checkoutPlanId: atom<string | null>({ key: 'checkoutPlanId', default: null }),
+};
+
+const subscriptionAtoms = {
+  selectedCurrency: atomWithLocalStorage<'CAD' | 'USD'>('selectedCurrency', 'CAD'),
 };
 
 const localStorageAtoms = {
@@ -75,4 +82,4 @@ const localStorageAtoms = {
   UsernameDisplay: atomWithLocalStorage('UsernameDisplay', true),
 };
 
-export default { ...staticAtoms, ...localStorageAtoms };
+export default { ...staticAtoms, ...localStorageAtoms, ...subscriptionAtoms };

@@ -1,6 +1,18 @@
 import type { Document, Types } from 'mongoose';
 import { CursorPaginationParams } from '~/common';
 
+export type SubscriptionStatus =
+  | 'active'
+  | 'canceled'
+  | 'past_due'
+  | 'unpaid'
+  | 'trialing'
+  | 'incomplete'
+  | 'incomplete_expired'
+  | 'paused'
+  | null;
+export type SubscriptionPlan = 'standard' | 'plus' | null;
+
 export interface IUser extends Document {
   name?: string;
   username?: string;
@@ -38,6 +50,12 @@ export interface IUser extends Document {
   updatedAt?: Date;
   /** Field for external source identification (for consistency with TPrincipal schema) */
   idOnTheSource?: string;
+  // Stripe subscription fields
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+  subscriptionPlan?: SubscriptionPlan;
+  subscriptionStatus?: SubscriptionStatus;
+  subscriptionPeriodEnd?: Date | null;
 }
 
 export interface BalanceConfig {

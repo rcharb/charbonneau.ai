@@ -19,6 +19,7 @@ const {
 const { connectDb, indexSync } = require('~/db');
 const initializeOAuthReconnectManager = require('./services/initializeOAuthReconnectManager');
 const createValidateImageRequest = require('./middleware/validateImageRequest');
+const subscriptionRefillService = require('./services/SubscriptionRefillService');
 const { jwtLogin, ldapLogin, passportLogin } = require('~/strategies');
 const { updateInterfacePermissions } = require('~/models/interface');
 const { checkMigrations } = require('./services/start/migration');
@@ -76,6 +77,8 @@ const startServer = async () => {
   }
 
   app.get('/health', (_req, res) => res.status(200).send('OK'));
+
+  app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }), routes.stripe);
 
   /* Middleware */
   app.use(noIndex);
@@ -141,6 +144,7 @@ const startServer = async () => {
   app.use('/api/banner', routes.banner);
   app.use('/api/memories', routes.memories);
   app.use('/api/permissions', routes.accessPermissions);
+  app.use('/api/stripe', routes.stripe);
 
   app.use('/api/tags', routes.tags);
   app.use('/api/mcp', routes.mcp);
@@ -174,6 +178,9 @@ const startServer = async () => {
     await initializeMCPs();
     await initializeOAuthReconnectManager();
     await checkMigrations();
+
+    // Initialize subscription refill service for monthly token grants to yearly subscribers
+    subscriptionRefillService.initialize();
   });
 };
 

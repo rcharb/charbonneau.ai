@@ -1,8 +1,7 @@
 const { logger } = require('@librechat/data-schemas');
-const { ErrorTypes } = require('librechat-data-provider');
 const { createSocialUser, handleExistingUser } = require('./process');
 const socialLogin = require('./socialLogin');
-const { findUser } = require('~/models');
+const { findUser, updateUser } = require('~/models');
 
 jest.mock('@librechat/data-schemas', () => {
   const actualModule = jest.requireActual('@librechat/data-schemas');
@@ -29,6 +28,7 @@ jest.mock('@librechat/api', () => ({
 
 jest.mock('~/models', () => ({
   findUser: jest.fn(),
+  updateUser: jest.fn(),
 }));
 
 jest.mock('~/server/services/Config', () => ({
@@ -232,8 +232,8 @@ describe('socialLogin', () => {
     });
   });
 
-  describe('Error handling', () => {
-    it('should return error if user exists with different provider', async () => {
+  describe('Account linking', () => {
+    it('should link social provider to existing account with different provider', async () => {
       const provider = 'google';
       const googleId = 'google-user-123';
       const email = 'user@example.com';
@@ -260,17 +260,63 @@ describe('socialLogin', () => {
 
       await loginFn(null, null, null, mockProfile, callback);
 
-      /** Verify error callback */
-      expect(callback).toHaveBeenCalledWith(
-        expect.objectContaining({
-          code: ErrorTypes.AUTH_FAILED,
-          provider: 'local',
-        }),
+      /** Verify updateUser was called to link the social provider */
+      expect(updateUser).toHaveBeenCalledWith('user123', { googleId: googleId });
+
+      /** Verify info log about linking */
+      expect(logger.info).toHaveBeenCalledWith(
+        `[${provider}Login] Linking ${provider} account to existing user: ${email}`,
       );
 
-      expect(logger.info).toHaveBeenCalledWith(
-        `[${provider}Login] User ${email} already exists with provider local`,
+      /** Verify handleExistingUser was called */
+      expect(handleExistingUser).toHaveBeenCalledWith(
+        existingUser,
+        'https://example.com/avatar.png',
       );
+
+      /** Verify successful callback */
+      expect(callback).toHaveBeenCalledWith(null, existingUser);
+    });
+
+    it('should not update if social provider is already linked', async () => {
+      const provider = 'google';
+      const googleId = 'google-user-123';
+      const email = 'user@example.com';
+
+      const existingUser = {
+        _id: 'user123',
+        email: email,
+        provider: 'local',
+        googleId: googleId, // Already linked
+      };
+
+      findUser
+        .mockResolvedValueOnce(null) // By googleId (not found because searching by different criteria)
+        .mockResolvedValueOnce(existingUser); // By email
+
+      const mockProfile = {
+        id: googleId,
+        emails: [{ value: email, verified: true }],
+        photos: [{ value: 'https://example.com/avatar.png' }],
+        name: { givenName: 'John', familyName: 'Doe' },
+      };
+
+      const loginFn = socialLogin(provider, mockGetProfileDetails);
+      const callback = jest.fn();
+
+      await loginFn(null, null, null, mockProfile, callback);
+
+      /** Verify updateUser was NOT called since already linked */
+      expect(updateUser).not.toHaveBeenCalled();
+
+      /** Verify handleExistingUser was called */
+      expect(handleExistingUser).toHaveBeenCalledWith(
+        existingUser,
+        'https://example.com/avatar.png',
+      );
+
+      /** Verify successful callback */
+      expect(callback).toHaveBeenCalledWith(null, existingUser);
     });
   });
 });

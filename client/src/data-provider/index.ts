@@ -10,6 +10,7 @@ export * from './Tools';
 export * from './connection';
 export * from './mutations';
 export * from './prompts';
+export * from './Stripe';
 export * from './queries';
 export * from './mcp';
 export * from './roles';

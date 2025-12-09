@@ -646,10 +646,21 @@ export type TUpdateFeedbackResponse = {
 
 export type TBalanceResponse = {
   tokenCredits: number;
+  // Balance type tracking
+  balanceType?: 'trial' | 'subscription';
+  trialCredits?: number;
+  subscriptionCredits?: number;
+  subscriptionPlan?: 'standard' | 'plus' | null;
+  subscriptionPeriodStart?: Date | null;
+  subscriptionPeriodEnd?: Date | null;
   // Automatic refill settings
   autoRefillEnabled: boolean;
   refillIntervalValue?: number;
   refillIntervalUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
   lastRefill?: Date;
   refillAmount?: number;
+  // Computed fields from controller
+  isTrialUser?: boolean;
+  isTrialDepleted?: boolean;
+  hasActiveSubscription?: boolean;
 };

@@ -194,5 +194,9 @@
   "com_ui_upload_type": "Ընտրեք ներբեռնելու տիպը",
   "com_ui_write": "Գրում է",
   "com_ui_yes": "Այո",
-  "com_user_message": "Դու"
+  "com_user_message": "Դու",
+  "com_subscription_monthly_short": "Ամսական",
+  "com_subscription_yearly": "Տարեկան",
+  "com_subscription_save": "Խնայել",
+  "com_subscription_currency": "Արժույթ"
 }
