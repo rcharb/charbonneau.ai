@@ -26,10 +26,10 @@ export default function PriceBreakdown({
   const localize = useLocalize();
   const selectedCurrency = useRecoilValue(store.selectedCurrency) as Currency;
 
-  // Calculate dueToday as price - tax (and subtract promotion if present)
+  // Calculate dueToday as price + tax (and subtract promotion if present)
   // Only use provided dueToday if it's explicitly set and greater than 0
   const calculatedDueToday: number =
-    dueToday !== undefined && dueToday > 0 ? dueToday : price - tax - (promotion?.amount || 0);
+    dueToday !== undefined && dueToday > 0 ? dueToday : price + tax - (promotion?.amount || 0);
 
   // Convert prices from CAD to selected currency
   const displayPrice = getPriceInCurrency(price, selectedCurrency);
