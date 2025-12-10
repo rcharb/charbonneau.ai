@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { EModelEndpoint } from 'librechat-data-provider';
 import type { ModelSelectorProps } from '~/common';
 import { ModelSelectorProvider, useModelSelectorContext } from './ModelSelectorContext';
 import { ModelSelectorChatProvider } from './ModelSelectorChatContext';
@@ -7,6 +8,7 @@ import {
   renderEndpoints,
   renderSearchResults,
   renderCustomGroups,
+  StarredAgentsSection,
 } from './components';
 import { getSelectedIcon, getDisplayValue } from './utils';
 import { CustomMenu as Menu } from './CustomMenu';
@@ -91,6 +93,18 @@ function ModelSelectorContent() {
           renderSearchResults(searchResults, localize, searchValue)
         ) : (
           <>
+            {/* Render Starred section at the top if agents endpoint exists */}
+            {(() => {
+              const agentsEndpoint = mappedEndpoints?.find(
+                (endpoint) => endpoint.value === EModelEndpoint.agents,
+              );
+              return agentsEndpoint ? (
+                <StarredAgentsSection
+                  key="starred-agents-section"
+                  agentsEndpoint={agentsEndpoint}
+                />
+              ) : null;
+            })()}
             {/* Render ungrouped modelSpecs (no group field) */}
             {renderModelSpecs(
               modelSpecs?.filter((spec) => !spec.group) || [],

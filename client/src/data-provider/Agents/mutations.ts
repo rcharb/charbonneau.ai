@@ -405,4 +405,162 @@ export const useRevertAgentVersionMutation = (
 
 export const invalidateAgentMarketplaceQueries = (queryClient: QueryClient) => {
   queryClient.invalidateQueries([QueryKeys.marketplaceAgents]);
+  queryClient.invalidateQueries([QueryKeys.agentCategories]);
+};
+
+/**
+ * Hook for starring an agent
+ */
+export const useStarAgentMutation = (
+  options?: t.StarAgentMutationOptions,
+): UseMutationResult<{ success: boolean }, Error, string> => {
+  const queryClient = useQueryClient();
+  return useMutation<{ success: boolean }, Error, string>(
+    async (agent_id: string): Promise<{ success: boolean }> => {
+      return await dataService.starAgent(agent_id);
+    },
+    {
+      onMutate: (variables) => options?.onMutate?.(variables),
+      onError: (error, variables, context) => options?.onError?.(error, variables, context),
+      onSuccess: (_data, agent_id, context) => {
+        // Optimistically update agent starred status in all queries
+        queryClient.setQueriesData<t.AgentListResponse>(
+          { queryKey: [QueryKeys.marketplaceAgents] },
+          (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              data: old.data?.map((agent) =>
+                agent.id === agent_id ? { ...agent, isStarred: true } : agent,
+              ),
+            };
+          },
+        );
+
+        // Update infinite query pages
+        queryClient.setQueriesData({ queryKey: [QueryKeys.marketplaceAgents] }, (old: any) => {
+          if (!old?.pages) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page: t.AgentListResponse) => ({
+              ...page,
+              data: page.data?.map((agent) =>
+                agent.id === agent_id ? { ...agent, isStarred: true } : agent,
+              ),
+            })),
+          };
+        });
+
+        // Optimistically add agent to favourites query if it exists
+        queryClient.setQueriesData(
+          {
+            queryKey: [QueryKeys.marketplaceAgents],
+            predicate: (query) => {
+              const params = query.queryKey[1] as any;
+              return params?.category === 'favourites';
+            },
+          },
+          (old: any) => {
+            if (!old?.pages) {
+              // If favourites query doesn't exist yet, create it with the new agent
+              // We'll need to fetch the agent data, but for now just invalidate
+              return old;
+            }
+            // Check if agent is already in the favourites list
+            const agentExists = old.pages.some((page: t.AgentListResponse) =>
+              page.data?.some((agent: t.Agent) => agent.id === agent_id),
+            );
+            if (agentExists) {
+              // Agent already exists, just update isStarred flag
+              return {
+                ...old,
+                pages: old.pages.map((page: t.AgentListResponse) => ({
+                  ...page,
+                  data: page.data?.map((agent: t.Agent) =>
+                    agent.id === agent_id ? { ...agent, isStarred: true } : agent,
+                  ),
+                })),
+              };
+            }
+            // Agent not in favourites list yet - invalidate to refetch
+            return old;
+          },
+        );
+
+        // Invalidate categories to update favourites count
+        queryClient.invalidateQueries([QueryKeys.agentCategories]);
+
+        // Invalidate all marketplace queries to refresh starred agents in dropdown
+        // This ensures the favourites query refetches to include the newly starred agent
+        queryClient.invalidateQueries([QueryKeys.marketplaceAgents], { refetchType: 'active' });
+
+        return options?.onSuccess?.(_data, agent_id, context);
+      },
+    },
+  );
+};
+
+/**
+ * Hook for unstarring an agent
+ */
+export const useUnstarAgentMutation = (
+  options?: t.UnstarAgentMutationOptions,
+): UseMutationResult<{ success: boolean }, Error, string> => {
+  const queryClient = useQueryClient();
+  return useMutation<{ success: boolean }, Error, string>(
+    async (agent_id: string): Promise<{ success: boolean }> => {
+      return await dataService.unstarAgent(agent_id);
+    },
+    {
+      onMutate: (variables) => options?.onMutate?.(variables),
+      onError: (error, variables, context) => options?.onError?.(error, variables, context),
+      onSuccess: (_data, agent_id, context) => {
+        // Optimistically update agent starred status in all queries
+        queryClient.setQueriesData<t.AgentListResponse>(
+          { queryKey: [QueryKeys.marketplaceAgents] },
+          (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              data: old.data?.map((agent) =>
+                agent.id === agent_id ? { ...agent, isStarred: false } : agent,
+              ),
+            };
+          },
+        );
+
+        // Update infinite query pages - only update isStarred flag, don't remove agent
+        // This keeps unstarred agents visible in marketplace Favourites tab until navigation/refresh
+        queryClient.setQueriesData({ queryKey: [QueryKeys.marketplaceAgents] }, (old: any) => {
+          if (!old?.pages) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page: t.AgentListResponse) => ({
+              ...page,
+              data: page.data?.map((agent) =>
+                agent.id === agent_id ? { ...agent, isStarred: false } : agent,
+              ),
+            })),
+          };
+        });
+
+        // Invalidate categories to update favourites count
+        queryClient.invalidateQueries([QueryKeys.agentCategories]);
+
+        // Only invalidate favourites queries used by dropdown (not marketplace)
+        // This ensures dropdown updates immediately while marketplace keeps unstarred agents visible
+        queryClient.invalidateQueries({
+          queryKey: [QueryKeys.marketplaceAgents],
+          predicate: (query) => {
+            const params = query.queryKey[1] as any;
+            // Only invalidate if it's a favourites query with high limit (dropdown uses limit: 100)
+            return params?.category === 'favourites' && params?.limit >= 100;
+          },
+          refetchType: 'active',
+        });
+
+        return options?.onSuccess?.(_data, agent_id, context);
+      },
+    },
+  );
 };

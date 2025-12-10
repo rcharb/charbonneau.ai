@@ -180,6 +180,11 @@ const userSchema = new Schema<IUser>(
       type: Date,
       default: null,
     },
+    starredAgents: {
+      type: [String],
+      default: [],
+      index: true,
+    },
   },
   { timestamps: true },
 );

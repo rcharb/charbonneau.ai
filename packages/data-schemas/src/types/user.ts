@@ -56,6 +56,7 @@ export interface IUser extends Document {
   subscriptionPlan?: SubscriptionPlan;
   subscriptionStatus?: SubscriptionStatus;
   subscriptionPeriodEnd?: Date | null;
+  starredAgents?: string[];
 }
 
 export interface BalanceConfig {

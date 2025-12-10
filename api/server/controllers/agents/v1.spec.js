@@ -52,6 +52,10 @@ jest.mock('~/server/services/PermissionService', () => ({
 
 jest.mock('~/models', () => ({
   getCategoriesWithCounts: jest.fn(),
+  getUserById: jest.fn().mockResolvedValue({
+    starredAgents: [],
+  }),
+  updateUser: jest.fn().mockResolvedValue({}),
 }));
 
 const {
@@ -64,6 +68,8 @@ const {
   findAccessibleResources,
   findPubliclyAccessibleResources,
 } = require('~/server/services/PermissionService');
+
+const { getUserById } = require('~/models');
 
 /**
  * @type {import('mongoose').Model<import('@librechat/data-schemas').IAgent>}
@@ -92,6 +98,11 @@ describe('Agent Controllers - Mass Assignment Protection', () => {
 
     // Reset all mocks
     jest.clearAllMocks();
+
+    // Reset getUserById mock to default behavior
+    getUserById.mockResolvedValue({
+      starredAgents: [],
+    });
 
     // Setup mock request and response objects
     mockReq = {

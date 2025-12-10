@@ -166,6 +166,8 @@ const AgentMarketplace: React.FC<AgentMarketplaceProps> = ({ className = '' }) =
     const searchParamsStr = currentSearchParams ? `?${currentSearchParams}` : '';
     if (tabValue === 'promoted') {
       navigate(`/agents${searchParamsStr}`);
+    } else if (tabValue === 'favourites') {
+      navigate(`/agents/favourites${searchParamsStr}`);
     } else {
       navigate(`/agents/${tabValue}${searchParamsStr}`);
     }
@@ -206,8 +208,10 @@ const AgentMarketplace: React.FC<AgentMarketplaceProps> = ({ className = '' }) =
     }
 
     // Always preserve current category when searching or clearing search
-    if (currentCategory === 'promoted') {
-      navigate(`/agents${newParams.toString() ? `?${newParams.toString()}` : ''}`);
+    if (currentCategory === 'promoted' || currentCategory === 'favourites') {
+      navigate(
+        `/agents${currentCategory === 'favourites' ? '/favourites' : ''}${newParams.toString() ? `?${newParams.toString()}` : ''}`,
+      );
     } else {
       navigate(
         `/agents/${currentCategory}${newParams.toString() ? `?${newParams.toString()}` : ''}`,
@@ -368,6 +372,12 @@ const AgentMarketplace: React.FC<AgentMarketplaceProps> = ({ className = '' }) =
                         {(() => {
                           // Get category data for display
                           const getCategoryData = () => {
+                            if (displayCategory === 'favourites') {
+                              return {
+                                name: localize('com_agents_favourites'),
+                                description: localize('com_agents_favourites_description'),
+                              };
+                            }
                             if (displayCategory === 'promoted') {
                               return {
                                 name: localize('com_agents_top_picks'),
@@ -445,6 +455,12 @@ const AgentMarketplace: React.FC<AgentMarketplaceProps> = ({ className = '' }) =
                           {(() => {
                             // Get category data for display
                             const getCategoryData = () => {
+                              if (nextCategory === 'favourites') {
+                                return {
+                                  name: localize('com_agents_favourites'),
+                                  description: localize('com_agents_favourites_description'),
+                                };
+                              }
                               if (nextCategory === 'promoted') {
                                 return {
                                   name: localize('com_agents_top_picks'),

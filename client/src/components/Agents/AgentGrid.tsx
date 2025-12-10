@@ -46,14 +46,16 @@ const AgentGrid: React.FC<AgentGridProps> = ({
     // Handle search
     if (searchQuery) {
       params.search = searchQuery;
-      // Include category filter for search if it's not 'all' or 'promoted'
-      if (category !== 'all' && category !== 'promoted') {
+      // Include category filter for search if it's not 'all', 'promoted', or 'favourites'
+      if (category !== 'all' && category !== 'promoted' && category !== 'favourites') {
         params.category = category;
       }
     } else {
       // Handle category-based queries
       if (category === 'promoted') {
         params.promoted = 1;
+      } else if (category === 'favourites') {
+        params.category = 'favourites';
       } else if (category !== 'all') {
         params.category = category;
       }
@@ -74,6 +76,12 @@ const AgentGrid: React.FC<AgentGridProps> = ({
     refetch,
     isFetchingNextPage,
   } = useMarketplaceAgentsInfiniteQuery(queryParams);
+
+  // Refetch in background when category changes to refresh starred status
+  // Use refetch instead of invalidate to avoid showing loading spinner
+  useEffect(() => {
+    refetch();
+  }, [category, refetch]);
 
   // Flatten all pages into a single array of agents
   const currentAgents = useMemo(() => {
@@ -163,13 +171,26 @@ const AgentGrid: React.FC<AgentGridProps> = ({
           className="py-12 text-center text-text-secondary"
           role="status"
           aria-live="polite"
-          aria-label={
-            searchQuery
-              ? localize('com_agents_search_empty_heading')
-              : localize('com_agents_empty_state_heading')
-          }
+          aria-label={(() => {
+            if (category === 'favourites') {
+              return localize('com_agents_favourites_empty');
+            }
+            if (searchQuery) {
+              return localize('com_agents_search_empty_heading');
+            }
+            return localize('com_agents_empty_state_heading');
+          })()}
         >
-          <h3 className="mb-2 text-lg font-medium">{localize('com_agents_empty_state_heading')}</h3>
+          <h3 className="mb-2 text-lg font-medium">
+            {category === 'favourites'
+              ? localize('com_agents_favourites_empty')
+              : localize('com_agents_empty_state_heading')}
+          </h3>
+          {category === 'favourites' && (
+            <p className="text-sm text-text-secondary">
+              {localize('com_agents_favourites_empty_description')}
+            </p>
+          )}
         </div>
       ) : (
         <>

@@ -504,6 +504,20 @@ export const getMarketplaceAgents = (params: {
   );
 };
 
+/**
+ * Star an agent
+ */
+export const starAgent = (agent_id: string): Promise<{ success: boolean }> => {
+  return request.post<{ success: boolean }>(endpoints.agents({ path: `${agent_id}/star` }));
+};
+
+/**
+ * Unstar an agent
+ */
+export const unstarAgent = (agent_id: string): Promise<{ success: boolean }> => {
+  return request.post<{ success: boolean }>(endpoints.agents({ path: `${agent_id}/unstar` }));
+};
+
 /* Tools */
 
 export const getAvailableAgentTools = (): Promise<s.TPlugin[]> => {

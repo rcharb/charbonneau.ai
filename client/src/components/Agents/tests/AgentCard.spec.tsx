@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AgentCard from '../AgentCard';
 import type t from 'librechat-data-provider';
 
@@ -11,6 +12,8 @@ jest.mock('~/hooks/useLocalize', () => () => (key: string) => {
     com_agents_agent_card_label: '{{name}} agent. {{description}}',
     com_agents_category_general: 'General',
     com_agents_category_hr: 'Human Resources',
+    com_agents_star_agent: 'Star {{name}}',
+    com_agents_unstar_agent: 'Unstar {{name}}',
   };
   return mockTranslations[key] || key;
 });
@@ -23,6 +26,8 @@ jest.mock('~/hooks', () => ({
       com_agents_agent_card_label: '{{name}} agent. {{description}}',
       com_agents_category_general: 'General',
       com_agents_category_hr: 'Human Resources',
+      com_agents_star_agent: 'Star {{name}}',
+      com_agents_unstar_agent: 'Unstar {{name}}',
     };
     let translation = mockTranslations[key] || key;
 
@@ -43,6 +48,33 @@ jest.mock('~/hooks', () => ({
     ],
   }),
 }));
+
+// Mock star/unstar mutations
+jest.mock('~/data-provider/Agents', () => ({
+  useStarAgentMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    isLoading: false,
+    isError: false,
+    error: null,
+  })),
+  useUnstarAgentMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    isLoading: false,
+    isError: false,
+    error: null,
+  })),
+}));
+
+// Create wrapper with QueryClient
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+};
 
 describe('AgentCard', () => {
   const mockAgent: t.Agent = {
@@ -70,13 +102,18 @@ describe('AgentCard', () => {
   };
 
   const mockOnClick = jest.fn();
+  const Wrapper = createWrapper();
 
   beforeEach(() => {
     mockOnClick.mockClear();
   });
 
   it('renders agent information correctly', () => {
-    render(<AgentCard agent={mockAgent} onClick={mockOnClick} />);
+    render(
+      <Wrapper>
+        <AgentCard agent={mockAgent} onClick={mockOnClick} />
+      </Wrapper>,
+    );
 
     expect(screen.getByText('Test Agent')).toBeInTheDocument();
     expect(screen.getByText('A test agent for testing purposes')).toBeInTheDocument();
@@ -84,7 +121,11 @@ describe('AgentCard', () => {
   });
 
   it('displays avatar when provided as object', () => {
-    render(<AgentCard agent={mockAgent} onClick={mockOnClick} />);
+    render(
+      <Wrapper>
+        <AgentCard agent={mockAgent} onClick={mockOnClick} />
+      </Wrapper>,
+    );
 
     const avatarImg = screen.getByAltText('Test Agent avatar');
     expect(avatarImg).toBeInTheDocument();
@@ -97,7 +138,11 @@ describe('AgentCard', () => {
       avatar: '/string-avatar.png' as any, // Legacy support for string avatars
     };
 
-    render(<AgentCard agent={agentWithStringAvatar} onClick={mockOnClick} />);
+    render(
+      <Wrapper>
+        <AgentCard agent={agentWithStringAvatar} onClick={mockOnClick} />
+      </Wrapper>,
+    );
 
     const avatarImg = screen.getByAltText('Test Agent avatar');
     expect(avatarImg).toBeInTheDocument();
@@ -110,7 +155,11 @@ describe('AgentCard', () => {
       avatar: undefined,
     };
 
-    render(<AgentCard agent={agentWithoutAvatar as any as t.Agent} onClick={mockOnClick} />);
+    render(
+      <Wrapper>
+        <AgentCard agent={agentWithoutAvatar as any as t.Agent} onClick={mockOnClick} />
+      </Wrapper>,
+    );
 
     // Check for Bot icon presence by looking for the svg with lucide-bot class
     const botIcon = document.querySelector('.lucide-bot');
@@ -118,45 +167,65 @@ describe('AgentCard', () => {
   });
 
   it('calls onClick when card is clicked', () => {
-    render(<AgentCard agent={mockAgent} onClick={mockOnClick} />);
+    render(
+      <Wrapper>
+        <AgentCard agent={mockAgent} onClick={mockOnClick} />
+      </Wrapper>,
+    );
 
-    const card = screen.getByRole('button');
+    const card = screen.getByRole('button', { name: /Test Agent agent/ });
     fireEvent.click(card);
 
     expect(mockOnClick).toHaveBeenCalledTimes(1);
   });
 
   it('calls onClick when Enter key is pressed', () => {
-    render(<AgentCard agent={mockAgent} onClick={mockOnClick} />);
+    render(
+      <Wrapper>
+        <AgentCard agent={mockAgent} onClick={mockOnClick} />
+      </Wrapper>,
+    );
 
-    const card = screen.getByRole('button');
+    const card = screen.getByRole('button', { name: /Test Agent agent/ });
     fireEvent.keyDown(card, { key: 'Enter' });
 
     expect(mockOnClick).toHaveBeenCalledTimes(1);
   });
 
   it('calls onClick when Space key is pressed', () => {
-    render(<AgentCard agent={mockAgent} onClick={mockOnClick} />);
+    render(
+      <Wrapper>
+        <AgentCard agent={mockAgent} onClick={mockOnClick} />
+      </Wrapper>,
+    );
 
-    const card = screen.getByRole('button');
+    const card = screen.getByRole('button', { name: /Test Agent agent/ });
     fireEvent.keyDown(card, { key: ' ' });
 
     expect(mockOnClick).toHaveBeenCalledTimes(1);
   });
 
   it('does not call onClick for other keys', () => {
-    render(<AgentCard agent={mockAgent} onClick={mockOnClick} />);
+    render(
+      <Wrapper>
+        <AgentCard agent={mockAgent} onClick={mockOnClick} />
+      </Wrapper>,
+    );
 
-    const card = screen.getByRole('button');
+    const card = screen.getByRole('button', { name: /Test Agent agent/ });
     fireEvent.keyDown(card, { key: 'Escape' });
 
     expect(mockOnClick).not.toHaveBeenCalled();
   });
 
   it('applies additional className when provided', () => {
-    render(<AgentCard agent={mockAgent} onClick={mockOnClick} className="custom-class" />);
+    render(
+      <Wrapper>
+        <AgentCard agent={mockAgent} onClick={mockOnClick} className="custom-class" />
+      </Wrapper>,
+    );
 
-    const card = screen.getByRole('button');
+    const card = screen.getByRole('button', { name: /Test Agent agent/ });
     expect(card).toHaveClass('custom-class');
   });
 
@@ -167,7 +236,11 @@ describe('AgentCard', () => {
       authorName: undefined,
     };
 
-    render(<AgentCard agent={agentWithoutContact} onClick={mockOnClick} />);
+    render(
+      <Wrapper>
+        <AgentCard agent={agentWithoutContact} onClick={mockOnClick} />
+      </Wrapper>,
+    );
 
     expect(screen.getByText('Test Agent')).toBeInTheDocument();
     expect(screen.getByText('A test agent for testing purposes')).toBeInTheDocument();
@@ -181,7 +254,11 @@ describe('AgentCard', () => {
       authorName: 'John Doe',
     };
 
-    render(<AgentCard agent={agentWithAuthorName} onClick={mockOnClick} />);
+    render(
+      <Wrapper>
+        <AgentCard agent={agentWithAuthorName} onClick={mockOnClick} />
+      </Wrapper>,
+    );
 
     expect(screen.getByText('John Doe')).toBeInTheDocument();
   });
@@ -193,7 +270,11 @@ describe('AgentCard', () => {
       authorName: undefined,
     };
 
-    render(<AgentCard agent={agentWithEmailOnly} onClick={mockOnClick} />);
+    render(
+      <Wrapper>
+        <AgentCard agent={agentWithEmailOnly} onClick={mockOnClick} />
+      </Wrapper>,
+    );
 
     expect(screen.getByText('contact@example.com')).toBeInTheDocument();
   });
@@ -205,7 +286,11 @@ describe('AgentCard', () => {
       authorName: 'John Doe',
     };
 
-    render(<AgentCard agent={agentWithBoth} onClick={mockOnClick} />);
+    render(
+      <Wrapper>
+        <AgentCard agent={agentWithBoth} onClick={mockOnClick} />
+      </Wrapper>,
+    );
 
     expect(screen.getByText('Support Team')).toBeInTheDocument();
     expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
@@ -221,16 +306,24 @@ describe('AgentCard', () => {
       authorName: undefined,
     };
 
-    render(<AgentCard agent={agentWithNameAndEmail} onClick={mockOnClick} />);
+    render(
+      <Wrapper>
+        <AgentCard agent={agentWithNameAndEmail} onClick={mockOnClick} />
+      </Wrapper>,
+    );
 
     expect(screen.getByText('Support Team')).toBeInTheDocument();
     expect(screen.queryByText('support@example.com')).not.toBeInTheDocument();
   });
 
   it('has proper accessibility attributes', () => {
-    render(<AgentCard agent={mockAgent} onClick={mockOnClick} />);
+    render(
+      <Wrapper>
+        <AgentCard agent={mockAgent} onClick={mockOnClick} />
+      </Wrapper>,
+    );
 
-    const card = screen.getByRole('button');
+    const card = screen.getByRole('button', { name: /Test Agent agent/ });
     expect(card).toHaveAttribute('tabIndex', '0');
     expect(card).toHaveAttribute(
       'aria-label',
@@ -244,7 +337,11 @@ describe('AgentCard', () => {
       category: 'general',
     };
 
-    render(<AgentCard agent={agentWithCategory} onClick={mockOnClick} />);
+    render(
+      <Wrapper>
+        <AgentCard agent={agentWithCategory} onClick={mockOnClick} />
+      </Wrapper>,
+    );
 
     expect(screen.getByText('General')).toBeInTheDocument();
   });
@@ -255,7 +352,11 @@ describe('AgentCard', () => {
       category: 'custom',
     };
 
-    render(<AgentCard agent={agentWithCustomCategory} onClick={mockOnClick} />);
+    render(
+      <Wrapper>
+        <AgentCard agent={agentWithCustomCategory} onClick={mockOnClick} />
+      </Wrapper>,
+    );
 
     expect(screen.getByText('Custom Category')).toBeInTheDocument();
   });
@@ -266,13 +367,21 @@ describe('AgentCard', () => {
       category: 'unknown',
     };
 
-    render(<AgentCard agent={agentWithUnknownCategory} onClick={mockOnClick} />);
+    render(
+      <Wrapper>
+        <AgentCard agent={agentWithUnknownCategory} onClick={mockOnClick} />
+      </Wrapper>,
+    );
 
     expect(screen.getByText('Unknown')).toBeInTheDocument();
   });
 
   it('does not display category tag when category is not provided', () => {
-    render(<AgentCard agent={mockAgent} onClick={mockOnClick} />);
+    render(
+      <Wrapper>
+        <AgentCard agent={mockAgent} onClick={mockOnClick} />
+      </Wrapper>,
+    );
 
     expect(screen.queryByText('General')).not.toBeInTheDocument();
     expect(screen.queryByText('Unknown')).not.toBeInTheDocument();
