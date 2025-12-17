@@ -1,8 +1,10 @@
 import React, { useMemo } from 'react';
-import { Label } from '@librechat/client';
+import { Label, Button } from '@librechat/client';
 import type t from 'librechat-data-provider';
 import { useLocalize, TranslationKeys, useAgentCategories } from '~/hooks';
 import { cn, renderAgentAvatar, getContactDisplayName } from '~/utils';
+import { useStarAgentMutation, useUnstarAgentMutation } from '~/data-provider/Agents';
+import StarIcon from './StarIcon';
 
 interface AgentCardProps {
   agent: t.Agent; // The agent data to display
@@ -16,6 +18,23 @@ interface AgentCardProps {
 const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick, className = '' }) => {
   const localize = useLocalize();
   const { categories } = useAgentCategories();
+  const starMutation = useStarAgentMutation();
+  const unstarMutation = useUnstarAgentMutation();
+
+  const isStarred = agent.isStarred ?? false;
+  const isLoading = starMutation.isLoading || unstarMutation.isLoading;
+
+  const handleStarClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (isLoading) return;
+
+    if (isStarred) {
+      unstarMutation.mutate(agent.id);
+    } else {
+      starMutation.mutate(agent.id);
+    }
+  };
 
   const categoryLabel = useMemo(() => {
     if (!agent.category) return '';
@@ -55,6 +74,37 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick, className = '' })
         }
       }}
     >
+      {/* Star button - positioned absolutely in top right */}
+      <Button
+        onClick={handleStarClick}
+        disabled={isLoading}
+        size="icon"
+        variant="ghost"
+        className={cn(
+          'absolute right-2 top-2 z-10 p-1.5',
+          'focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0',
+          isLoading && 'cursor-not-allowed opacity-50',
+        )}
+        aria-label={
+          isStarred
+            ? localize('com_agents_unstar_agent', { name: agent.name })
+            : localize('com_agents_star_agent', { name: agent.name })
+        }
+        title={
+          isStarred
+            ? localize('com_agents_unstar_agent', { name: agent.name })
+            : localize('com_agents_star_agent', { name: agent.name })
+        }
+      >
+        <StarIcon
+          filled={isStarred}
+          className={cn(
+            'transition-colors',
+            isStarred ? 'text-yellow-500' : 'text-text-secondary hover:text-yellow-500',
+          )}
+        />
+      </Button>
+
       {/* Two column layout */}
       <div className="flex h-full items-start gap-3">
         {/* Left column: Avatar and Category */}

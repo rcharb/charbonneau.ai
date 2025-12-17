@@ -13,11 +13,11 @@ async function _getResponse<T>(url: string, options?: AxiosRequestConfig): Promi
   return await axios.get(url, { ...options });
 }
 
-async function _post(url: string, data?: any) {
+async function _post<T = any>(url: string, data?: any): Promise<T> {
   const response = await axios.post(url, JSON.stringify(data), {
     headers: { 'Content-Type': 'application/json' },
   });
-  return response.data;
+  return response.data as T;
 }
 
 async function _postMultiPart(url: string, formData: FormData, options?: AxiosRequestConfig) {
@@ -153,7 +153,7 @@ if (typeof window !== 'undefined') {
 export default {
   get: _get,
   getResponse: _getResponse,
-  post: _post,
+  post: _post as <T = any>(url: string, data?: any) => Promise<T>,
   postMultiPart: _postMultiPart,
   postTTS: _postTTS,
   put: _put,

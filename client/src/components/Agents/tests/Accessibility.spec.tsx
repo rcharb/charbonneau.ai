@@ -101,6 +101,18 @@ jest.mock('~/hooks', () => ({
 
 jest.mock('~/data-provider/Agents', () => ({
   useMarketplaceAgentsInfiniteQuery: jest.fn(),
+  useStarAgentMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    isLoading: false,
+    isError: false,
+    error: null,
+  })),
+  useUnstarAgentMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    isLoading: false,
+    isError: false,
+    error: null,
+  })),
 }));
 
 // Mock utility functions
@@ -299,9 +311,14 @@ describe('Accessibility Improvements', () => {
     };
 
     it('provides comprehensive ARIA labels', () => {
-      render(<AgentCard agent={mockAgent as t.Agent} onClick={jest.fn()} />);
+      const Wrapper = createWrapper();
+      render(
+        <Wrapper>
+          <AgentCard agent={mockAgent as t.Agent} onClick={jest.fn()} />
+        </Wrapper>,
+      );
 
-      const card = screen.getByRole('button');
+      const card = screen.getByRole('button', { name: /Test Agent agent/ });
       expect(card).toHaveAttribute('aria-label', 'Test Agent agent. A test agent for testing');
       expect(card).toHaveAttribute('aria-describedby', 'agent-test-agent-description');
       expect(card).toHaveAttribute('role', 'button');
@@ -309,9 +326,14 @@ describe('Accessibility Improvements', () => {
 
     it('supports keyboard interaction', () => {
       const onClick = jest.fn();
-      render(<AgentCard agent={mockAgent as t.Agent} onClick={onClick} />);
+      const Wrapper = createWrapper();
+      render(
+        <Wrapper>
+          <AgentCard agent={mockAgent as t.Agent} onClick={onClick} />
+        </Wrapper>,
+      );
 
-      const card = screen.getByRole('button');
+      const card = screen.getByRole('button', { name: /Test Agent agent/ });
 
       fireEvent.keyDown(card, { key: 'Enter' });
       expect(onClick).toHaveBeenCalledTimes(1);
@@ -335,7 +357,12 @@ describe('Accessibility Improvements', () => {
           ],
         },
         isLoading: false,
+        isFetching: false,
+        isFetchingNextPage: false,
         error: null,
+        refetch: jest.fn(),
+        fetchNextPage: jest.fn(),
+        hasNextPage: false,
       } as any);
     });
 
@@ -382,6 +409,8 @@ describe('Accessibility Improvements', () => {
         isFetchingNextPage: true,
         isLoading: false,
         error: null,
+        refetch: jest.fn(),
+        fetchNextPage: jest.fn(),
       } as any);
 
       const Wrapper = createWrapper();
@@ -409,7 +438,11 @@ describe('Accessibility Improvements', () => {
         },
         isLoading: false,
         isFetching: false,
+        isFetchingNextPage: false,
         error: null,
+        refetch: jest.fn(),
+        fetchNextPage: jest.fn(),
+        hasNextPage: false,
       } as any);
 
       const Wrapper = createWrapper();

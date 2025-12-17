@@ -165,6 +165,22 @@ router.post(
 router.get('/', checkAgentAccess, v1.getListAgents);
 
 /**
+ * Star an agent.
+ * @route POST /agents/:id/star
+ * @param {string} req.params.id - Agent identifier.
+ * @returns {Object} 200 - success response - application/json
+ */
+router.post('/:id/star', checkAgentAccess, v1.starAgent);
+
+/**
+ * Unstar an agent.
+ * @route POST /agents/:id/unstar
+ * @param {string} req.params.id - Agent identifier.
+ * @returns {Object} 200 - success response - application/json
+ */
+router.post('/:id/unstar', checkAgentAccess, v1.unstarAgent);
+
+/**
  * Uploads and updates an avatar for a specific agent.
  * @route POST /agents/:agent_id/avatar
  * @param {string} req.params.agent_id - The ID of the agent.

@@ -45,7 +45,7 @@ const { filterFile } = require('~/server/services/Files/process');
 const { updateAction, getActions } = require('~/models/Action');
 const { getCachedTools } = require('~/server/services/Config');
 const { deleteFileByFilter } = require('~/models/File');
-const { getCategoriesWithCounts } = require('~/models');
+const { getCategoriesWithCounts, updateUser, getUserById } = require('~/models');
 const { getLogStores } = require('~/cache');
 
 const systemTools = {
@@ -504,8 +504,22 @@ const getListAgentsHandler = async (req, res) => {
     // Base filter
     const filter = {};
 
-    // Handle category filter - only apply if category is defined
-    if (category !== undefined && category.trim() !== '') {
+    // Handle favourites category - filter by starred agent IDs
+    let starredAgentIds = [];
+    if (category === 'favourites') {
+      const user = await getUserById(userId, 'starredAgents');
+      starredAgentIds = user?.starredAgents || [];
+      if (starredAgentIds.length === 0) {
+        // Return empty result if no starred agents
+        return res.json({
+          data: [],
+          after: null,
+        });
+      }
+    }
+
+    // Handle category filter - only apply if category is defined and not favourites
+    if (category !== undefined && category.trim() !== '' && category !== 'favourites') {
       filter.category = category;
     }
 
@@ -536,9 +550,23 @@ const getListAgentsHandler = async (req, res) => {
       requiredPermissions: PermissionBits.VIEW,
     });
 
+    // For favourites, intersect accessible IDs with starred agent IDs
+    let finalAccessibleIds = accessibleIds;
+    if (category === 'favourites' && starredAgentIds.length > 0) {
+      // Get agent documents to match by id field (not _id)
+      const { getAgent } = require('~/models/Agent');
+      const starredAgents = await Promise.all(
+        starredAgentIds.map((agentId) => getAgent({ id: agentId })),
+      );
+      const starredMongoIds = starredAgents
+        .filter((agent) => agent && agent._id)
+        .map((agent) => agent._id.toString());
+      finalAccessibleIds = accessibleIds.filter((id) => starredMongoIds.includes(id.toString()));
+    }
+
     // Use the new ACL-aware function
     const data = await getListAgentsByAccess({
-      accessibleIds,
+      accessibleIds: finalAccessibleIds,
       otherParams: filter,
       limit,
       after: cursor,
@@ -546,16 +574,31 @@ const getListAgentsHandler = async (req, res) => {
 
     const agents = data?.data ?? [];
     if (!agents.length) {
-      return res.json(data);
+      // Still include starred status even if no agents
+      const user = await getUserById(userId, 'starredAgents');
+      const starredSet = new Set(user?.starredAgents || []);
+      return res.json({
+        ...data,
+        data: agents.map((agent) => ({
+          ...agent,
+          isStarred: starredSet.has(agent.id),
+        })),
+      });
     }
 
     const publicSet = new Set(publiclyAccessibleIds.map((oid) => oid.toString()));
+
+    // Get user's starred agents to include starred status
+    const user = await getUserById(userId, 'starredAgents');
+    const starredSet = new Set(user?.starredAgents || []);
 
     data.data = agents.map((agent) => {
       try {
         if (agent?._id && publicSet.has(agent._id.toString())) {
           agent.isPublic = true;
         }
+        // Add starred status
+        agent.isStarred = starredSet.has(agent.id);
       } catch (e) {
         // Silently ignore mapping errors
         void e;
@@ -719,10 +762,10 @@ const revertAgentVersionHandler = async (req, res) => {
 /**
  * Get all agent categories with counts
  *
- * @param {Object} _req - Express request object (unused)
+ * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const getAgentCategories = async (_req, res) => {
+const getAgentCategories = async (req, res) => {
   try {
     const categories = await getCategoriesWithCounts();
     const promotedCount = await countPromotedAgents();
@@ -732,6 +775,18 @@ const getAgentCategories = async (_req, res) => {
       count: category.agentCount,
       description: category.description,
     }));
+
+    // Add favourites category at the beginning if user is logged in
+    if (req.user && req.user.id) {
+      const user = await getUserById(req.user.id, 'starredAgents');
+      const starredCount = user?.starredAgents?.length || 0;
+      formattedCategories.unshift({
+        value: 'favourites',
+        label: 'Favourites',
+        count: starredCount,
+        description: 'Your starred agents',
+      });
+    }
 
     if (promotedCount > 0) {
       formattedCategories.unshift({
@@ -758,6 +813,64 @@ const getAgentCategories = async (_req, res) => {
     });
   }
 };
+
+/**
+ * Star an agent
+ * @route POST /agents/:id/star
+ * @param {object} req - Express Request
+ * @param {object} req.params - Request params
+ * @param {string} req.params.id - Agent identifier.
+ * @returns {Promise<{success: boolean}>} 200 - success response - application/json
+ */
+const starAgentHandler = async (req, res) => {
+  try {
+    const { id: agentId } = req.params;
+    const userId = req.user.id;
+
+    const user = await getUserById(userId, 'starredAgents');
+    const starredAgents = user?.starredAgents || [];
+
+    if (!starredAgents.includes(agentId)) {
+      await updateUser(userId, {
+        starredAgents: [...starredAgents, agentId],
+      });
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    logger.error('[/agents/:id/star] Error starring agent', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Unstar an agent
+ * @route POST /agents/:id/unstar
+ * @param {object} req - Express Request
+ * @param {object} req.params - Request params
+ * @param {string} req.params.id - Agent identifier.
+ * @returns {Promise<{success: boolean}>} 200 - success response - application/json
+ */
+const unstarAgentHandler = async (req, res) => {
+  try {
+    const { id: agentId } = req.params;
+    const userId = req.user.id;
+
+    const user = await getUserById(userId, 'starredAgents');
+    const starredAgents = user?.starredAgents || [];
+
+    if (starredAgents.includes(agentId)) {
+      await updateUser(userId, {
+        starredAgents: starredAgents.filter((id) => id !== agentId),
+      });
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    logger.error('[/agents/:id/unstar] Error unstarring agent', error);
+    res.status(500).json({ error: error.message });
+  }
+};
 module.exports = {
   createAgent: createAgentHandler,
   getAgent: getAgentHandler,
@@ -768,4 +881,6 @@ module.exports = {
   uploadAgentAvatar: uploadAgentAvatarHandler,
   revertAgentVersion: revertAgentVersionHandler,
   getAgentCategories,
+  starAgent: starAgentHandler,
+  unstarAgent: unstarAgentHandler,
 };

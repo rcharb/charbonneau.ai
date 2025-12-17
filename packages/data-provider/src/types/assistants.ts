@@ -240,6 +240,7 @@ export type Agent = {
   version?: number;
   category?: string;
   support_contact?: SupportContact;
+  isStarred?: boolean;
 };
 
 export type TAgentsMap = Record<string, Agent | undefined>;
