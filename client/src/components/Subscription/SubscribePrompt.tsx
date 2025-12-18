@@ -2,6 +2,7 @@ import { useRecoilState } from 'recoil';
 import { Sparkles, X } from 'lucide-react';
 import { Button, OGDialog, OGDialogContent } from '@librechat/client';
 import { useLocalize } from '~/hooks';
+import { StripePricingTable } from '~/components/Subscription';
 import store from '~/store';
 
 interface SubscribePromptProps {
@@ -16,10 +17,10 @@ export default function SubscribePrompt({
   variant = 'inline',
 }: SubscribePromptProps) {
   const localize = useLocalize();
-  const [, setShowChoosePlan] = useRecoilState(store.showChoosePlan);
+  const [showPricingTable, setShowPricingTable] = useRecoilState(store.showChoosePlan);
 
   const handleSubscribe = () => {
-    setShowChoosePlan(true);
+    setShowPricingTable(true);
     onClose?.();
   };
 
@@ -82,26 +83,29 @@ export default function SubscribePrompt({
 
   // Default: inline variant
   return (
-    <div className="rounded-xl border border-purple-200 bg-purple-50 p-4 dark:border-purple-800 dark:bg-purple-900/20">
-      <div className="flex items-start gap-3">
-        <div className="rounded-full bg-purple-100 p-2 dark:bg-purple-900/50">
-          <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-        </div>
-        <div className="flex-1">
-          <h3 className="font-medium text-gray-900 dark:text-white">
-            {localize('com_nav_subscribe_prompt_title')}
-          </h3>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-            {localize('com_nav_subscribe_prompt_description')}
-          </p>
-          <Button
-            onClick={handleSubscribe}
-            className="mt-3 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
-          >
-            {localize('com_nav_subscribe_button')}
-          </Button>
+    <>
+      <div className="rounded-xl border border-purple-200 bg-purple-50 p-4 dark:border-purple-800 dark:bg-purple-900/20">
+        <div className="flex items-start gap-3">
+          <div className="rounded-full bg-purple-100 p-2 dark:bg-purple-900/50">
+            <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-medium text-gray-900 dark:text-white">
+              {localize('com_nav_subscribe_prompt_title')}
+            </h3>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+              {localize('com_nav_subscribe_prompt_description')}
+            </p>
+            <Button
+              onClick={handleSubscribe}
+              className="mt-3 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+            >
+              {localize('com_nav_subscribe_button')}
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+      <StripePricingTable open={showPricingTable} onClose={() => setShowPricingTable(false)} />
+    </>
   );
 }

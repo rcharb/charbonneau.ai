@@ -36,13 +36,23 @@ export default function ChatRoute() {
   );
   useAppStartup({ startupConfig, user });
 
-  // Handle subscription success notification
+  // Handle subscription success/error notifications
   useEffect(() => {
     const subscriptionStatus = searchParams.get('subscription');
     if (subscriptionStatus === 'success') {
       showToast({
         message: localize('com_subscription_success'),
         status: 'success',
+      });
+      // Remove the query param after showing the toast
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('subscription');
+      setSearchParams(newParams, { replace: true });
+    } else if (subscriptionStatus === 'error') {
+      showToast({
+        message:
+          localize('com_subscription_error') || 'Subscription payment failed. Please try again.',
+        status: 'error',
       });
       // Remove the query param after showing the toast
       const newParams = new URLSearchParams(searchParams);

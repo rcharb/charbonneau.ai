@@ -20,16 +20,17 @@ export default function CheckoutComplete() {
     }
 
     if (!sessionId) {
-      navigate('/?subscription=error', { replace: true });
+      navigate('/c/new?subscription=error', { replace: true });
       return;
     }
 
     if (sessionStatus) {
       const { status, payment_status } = sessionStatus;
       if (status === 'complete' && payment_status === 'paid') {
-        navigate('/?subscription=success', { replace: true });
+        // Navigate to chat route with success parameter so the toast notification shows
+        navigate('/c/new?subscription=success', { replace: true });
       } else {
-        navigate('/?subscription=error', { replace: true });
+        navigate('/c/new?subscription=error', { replace: true });
       }
     }
   }, [isAuthenticated, navigate, sessionId, sessionStatus]);

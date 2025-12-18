@@ -1,8 +1,16 @@
 import { useState, memo } from 'react';
 import { useRecoilState } from 'recoil';
 import * as Select from '@ariakit/react/select';
-import { FileText, LogOut, CreditCard, Sparkles, AlertCircle } from 'lucide-react';
-import { LinkIcon, GearIcon, DropdownMenuSeparator, Avatar } from '@librechat/client';
+import {
+  FileText,
+  LogOut,
+  DollarSign,
+  Sparkles,
+  AlertCircle,
+  Settings as SettingsIcon,
+} from 'lucide-react';
+import { LinkIcon, DropdownMenuSeparator, Avatar } from '@librechat/client';
+import { SettingsTabValues } from 'librechat-data-provider';
 import { useGetStartupConfig, useGetUserBalance } from '~/data-provider';
 import FilesView from '~/components/Chat/Input/Files/FilesView';
 import { useAuthContext } from '~/hooks/AuthContext';
@@ -19,7 +27,21 @@ function AccountSettings() {
   });
   const [showSettings, setShowSettings] = useState(false);
   const [showFiles, setShowFiles] = useRecoilState(store.showFiles);
-  const [, setShowChoosePlan] = useRecoilState(store.showChoosePlan);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTabValues | undefined>(
+    undefined,
+  );
+
+  // Open Settings with Balance tab active
+  const handleBalanceClick = () => {
+    setSettingsInitialTab(SettingsTabValues.BALANCE);
+    setShowSettings(true);
+  };
+
+  // Open Settings normally (without specific tab)
+  const handleSettingsClick = () => {
+    setSettingsInitialTab(undefined);
+    setShowSettings(true);
+  };
 
   return (
     <Select.SelectProvider>
@@ -104,20 +126,14 @@ function AccountSettings() {
             {localize('com_nav_help_faq')}
           </Select.SelectItem>
         )}
-        <Select.SelectItem
-          value=""
-          onClick={() => setShowChoosePlan(true)}
-          className="select-item text-sm"
-        >
-          <CreditCard className="icon-md" aria-hidden="true" />
-          {localize('com_nav_manage_subscription')}
-        </Select.SelectItem>
-        <Select.SelectItem
-          value=""
-          onClick={() => setShowSettings(true)}
-          className="select-item text-sm"
-        >
-          <GearIcon className="icon-md" aria-hidden="true" />
+        {startupConfig?.balance?.enabled && (
+          <Select.SelectItem value="" onClick={handleBalanceClick} className="select-item text-sm">
+            <DollarSign className="icon-md" aria-hidden="true" />
+            {localize('com_nav_balance')}
+          </Select.SelectItem>
+        )}
+        <Select.SelectItem value="" onClick={handleSettingsClick} className="select-item text-sm">
+          <SettingsIcon className="icon-md" aria-hidden="true" />
           {localize('com_nav_settings')}
         </Select.SelectItem>
         <DropdownMenuSeparator />
@@ -132,7 +148,13 @@ function AccountSettings() {
         </Select.SelectItem>
       </Select.SelectPopover>
       {showFiles && <FilesView open={showFiles} onOpenChange={setShowFiles} />}
-      {showSettings && <Settings open={showSettings} onOpenChange={setShowSettings} />}
+      {showSettings && (
+        <Settings
+          open={showSettings}
+          onOpenChange={setShowSettings}
+          initialTab={settingsInitialTab}
+        />
+      )}
     </Select.SelectProvider>
   );
 }
