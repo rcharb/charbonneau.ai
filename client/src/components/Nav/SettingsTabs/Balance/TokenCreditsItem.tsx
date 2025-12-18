@@ -7,12 +7,18 @@ interface TokenCreditsItemProps {
   tokenCredits?: number;
   balanceType?: 'trial' | 'subscription';
   subscriptionPlan?: 'standard' | 'plus' | null;
+  startBalance?: number;
+  subscriptionStandardTokens?: number;
+  subscriptionPlusTokens?: number;
 }
 
 const TokenCreditsItem: React.FC<TokenCreditsItemProps> = ({
   tokenCredits,
   balanceType = 'trial',
   subscriptionPlan,
+  startBalance,
+  subscriptionStandardTokens,
+  subscriptionPlusTokens,
 }) => {
   const localize = useLocalize();
 
@@ -63,9 +69,12 @@ const TokenCreditsItem: React.FC<TokenCreditsItemProps> = ({
   // Get max credits for progress calculation
   const getMaxCredits = (): number => {
     if (balanceType === 'subscription') {
-      return subscriptionPlan === 'plus' ? 750000 : 300000;
+      if (subscriptionPlan === 'plus') {
+        return subscriptionPlusTokens ?? 750000; // Fallback to default if not configured
+      }
+      return subscriptionStandardTokens ?? 300000; // Fallback to default if not configured
     }
-    return 100000;
+    return startBalance ?? 100000; // Fallback to default if not configured
   };
 
   // Calculate wasted (used) tokens

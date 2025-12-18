@@ -14,10 +14,20 @@ import { isEnabled } from '~/utils';
 export function getBalanceConfig(appConfig?: AppConfig): Partial<TCustomConfig['balance']> | null {
   const isLegacyEnabled = isEnabled(process.env.CHECK_BALANCE);
   const startBalance = process.env.START_BALANCE;
+  const subscriptionStandardTokens = process.env.SUBSCRIPTION_STANDARD_TOKENS;
+  const subscriptionPlusTokens = process.env.SUBSCRIPTION_PLUS_TOKENS;
   /** @type {} */
   const config: Partial<TCustomConfig['balance']> = removeNullishValues({
     enabled: isLegacyEnabled,
     startBalance: startBalance != null && startBalance ? parseInt(startBalance, 10) : undefined,
+    subscriptionStandardTokens:
+      subscriptionStandardTokens != null && subscriptionStandardTokens
+        ? parseInt(subscriptionStandardTokens, 10)
+        : undefined,
+    subscriptionPlusTokens:
+      subscriptionPlusTokens != null && subscriptionPlusTokens
+        ? parseInt(subscriptionPlusTokens, 10)
+        : undefined,
   });
   if (!appConfig) {
     return config;

@@ -42,7 +42,9 @@ function Balance({ onClose }: BalanceProps) {
   const getInferredPlan = (): 'standard' | 'plus' | null => {
     if (subscriptionPlan) return subscriptionPlan;
     if (hasActiveSubscription && refillAmount) {
-      return refillAmount >= 750000 ? 'plus' : 'standard';
+      // Use config values if available, otherwise fallback to defaults
+      const plusTokens = startupConfig?.balance?.subscriptionPlusTokens ?? 750000;
+      return refillAmount >= plusTokens ? 'plus' : 'standard';
     }
     return null;
   };
@@ -79,6 +81,9 @@ function Balance({ onClose }: BalanceProps) {
         tokenCredits={tokenCredits}
         balanceType={balanceType}
         subscriptionPlan={inferredPlan}
+        startBalance={startupConfig?.balance?.startBalance}
+        subscriptionStandardTokens={startupConfig?.balance?.subscriptionStandardTokens}
+        subscriptionPlusTokens={startupConfig?.balance?.subscriptionPlusTokens}
       />
 
       {/* Auto-refill display - only show for subscribers */}

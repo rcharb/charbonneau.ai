@@ -784,6 +784,8 @@ export const balanceSchema = z.object({
     .optional()
     .default('days'),
   refillAmount: z.number().optional().default(10000),
+  subscriptionStandardTokens: z.number().optional(),
+  subscriptionPlusTokens: z.number().optional(),
 });
 
 export const transactionsSchema = z.object({
