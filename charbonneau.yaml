@@ -14,7 +14,7 @@ interface:
     externalUrl: "https://jimm.ai/terms"
     openNewTab: true
   modalAcceptance: false
-   marketplace:
+  marketplace:
     use: true  # Enable marketplace access
     
 memory:
