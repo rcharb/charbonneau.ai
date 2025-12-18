@@ -60,6 +60,12 @@ COPY --from=data-provider-build /app/packages/data-provider/dist /app/packages/d
 COPY --from=client-package-build /app/packages/client/dist /app/packages/client/dist
 COPY --from=client-package-build /app/packages/client/src /app/packages/client/src
 ENV NODE_OPTIONS="--max-old-space-size=2048"
+ARG VITE_STRIPE_PUBLISHABLE_KEY
+ENV VITE_STRIPE_PUBLISHABLE_KEY=${VITE_STRIPE_PUBLISHABLE_KEY}
+ARG VITE_STRIPE_PRICING_TABLE_ID_LIGHT
+ENV VITE_STRIPE_PRICING_TABLE_ID_LIGHT=${VITE_STRIPE_PRICING_TABLE_ID_LIGHT}
+ARG VITE_STRIPE_PRICING_TABLE_ID_DARK
+ENV VITE_STRIPE_PRICING_TABLE_ID_DARK=${VITE_STRIPE_PRICING_TABLE_ID_DARK}
 RUN npm run build
 
 # API setup (including client dist)

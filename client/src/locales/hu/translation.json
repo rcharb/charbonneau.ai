@@ -366,7 +366,6 @@
   "com_nav_font_size_xl": "Extra nagy",
   "com_nav_font_size_xs": "Extra kicsi",
   "com_nav_help_faq": "Segítség és GYIK",
-  "com_nav_manage_subscription": "Előfizetés kezelése",
   "com_nav_hide_panel": "Legjobb oldalsó panel elrejtése",
   "com_nav_info_code_artifacts": "Engedélyezi a kísérleti kód műtermékek megjelenítését a csevegés mellett",
   "com_nav_info_code_artifacts_agent": "Engedélyezi a kód műtermékek használatát ehhez az ügynökhöz. Alapértelmezés szerint a műtermékek használatára vonatkozó további utasítások hozzáadódnak, kivéve, ha az „Egyéni prompt mód” engedélyezve van.",
@@ -855,8 +854,5 @@
   "com_ui_yes": "Igen",
   "com_ui_zoom": "Zoom",
   "com_user_message": "Ön",
-  "com_subscription_monthly_short": "Havi",
-  "com_subscription_yearly": "Éves",
-  "com_subscription_save": "Megtakarítás",
   "com_subscription_currency": "Pénznem"
 }

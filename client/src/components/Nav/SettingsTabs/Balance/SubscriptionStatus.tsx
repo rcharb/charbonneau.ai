@@ -4,6 +4,7 @@ import { Crown, Sparkles, AlertCircle, Calendar, CheckCircle2, ExternalLink } fr
 import { Button, Label, Spinner } from '@librechat/client';
 import { useCreatePortalSessionMutation } from '~/data-provider/Stripe';
 import { useLocalize } from '~/hooks';
+import { StripePricingTable } from '~/components/Subscription';
 import store from '~/store';
 
 interface SubscriptionStatusProps {
@@ -26,13 +27,13 @@ const SubscriptionStatus: React.FC<SubscriptionStatusProps> = ({
   onClose,
 }) => {
   const localize = useLocalize();
-  const [, setShowChoosePlan] = useRecoilState(store.showChoosePlan);
+  const [showPricingTable, setShowPricingTable] = useRecoilState(store.showChoosePlan);
   const [portalError, setPortalError] = useState<string | null>(null);
   const createPortalSessionMutation = useCreatePortalSessionMutation();
 
   const handleSubscribe = () => {
     onClose?.();
-    setShowChoosePlan(true);
+    setShowPricingTable(true);
   };
 
   const handleManageSubscription = () => {
@@ -86,39 +87,42 @@ const SubscriptionStatus: React.FC<SubscriptionStatusProps> = ({
   // Trial user view
   if (isTrialUser) {
     return (
-      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
-        <div className="flex items-start gap-3">
-          <div className="rounded-full bg-purple-100 p-2 dark:bg-purple-900/30">
-            <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center justify-between">
-              <span className="font-medium">{localize('com_nav_trial')}</span>
-              <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                {localize('com_nav_balance_free_tier')}
-              </span>
+      <>
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-purple-100 p-2 dark:bg-purple-900/30">
+              <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             </div>
-            {isTrialDepleted ? (
-              <div className="mt-2 flex items-center gap-1.5 text-sm text-amber-600 dark:text-amber-400">
-                <AlertCircle className="h-4 w-4" />
-                <span>{localize('com_nav_trial_depleted')}</span>
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <span className="font-medium">{localize('com_nav_trial')}</span>
+                <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                  {localize('com_nav_balance_free_tier')}
+                </span>
               </div>
-            ) : (
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                {localize('com_nav_balance_trial_description')}
-              </p>
-            )}
-            <Button
-              onClick={handleSubscribe}
-              variant="default"
-              size="sm"
-              className="mt-3 bg-purple-600 text-white hover:bg-purple-700"
-            >
-              {localize('com_nav_subscribe_button')}
-            </Button>
+              {isTrialDepleted ? (
+                <div className="mt-2 flex items-center gap-1.5 text-sm text-amber-600 dark:text-amber-400">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>{localize('com_nav_trial_depleted')}</span>
+                </div>
+              ) : (
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                  {localize('com_nav_balance_trial_description')}
+                </p>
+              )}
+              <Button
+                onClick={handleSubscribe}
+                variant="default"
+                size="sm"
+                className="mt-3 bg-purple-600 text-white hover:bg-purple-700"
+              >
+                {localize('com_nav_subscribe_button')}
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+        <StripePricingTable open={showPricingTable} onClose={() => setShowPricingTable(false)} />
+      </>
     );
   }
 

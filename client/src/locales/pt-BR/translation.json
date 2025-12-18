@@ -466,7 +466,6 @@
   "com_nav_font_size_xl": "Extra Grande",
   "com_nav_font_size_xs": "Extra Pequeno",
   "com_nav_help_faq": "Ajuda & FAQ",
-  "com_nav_manage_subscription": "Gerenciar assinatura",
   "com_nav_hide_panel": "Ocultar painel mais à direita",
   "com_nav_info_code_artifacts": "Habilita a exibição de artefatos de código experimental ao lado do chat",
   "com_nav_info_code_artifacts_agent": "Ativa a utilização de artefatos de código para este agente. Por predefinição, são adicionadas instruções adicionais específicas para a utilização de artefatos, a menos que o \"Modo de aviso personalizado\" esteja ativado.",
@@ -1041,8 +1040,5 @@
   "com_ui_yes": "Sim",
   "com_ui_zoom": "Zoom",
   "com_user_message": "Você",
-  "com_subscription_monthly_short": "Mensal",
-  "com_subscription_yearly": "Anual",
-  "com_subscription_save": "Economizar",
   "com_subscription_currency": "Moeda"
 }

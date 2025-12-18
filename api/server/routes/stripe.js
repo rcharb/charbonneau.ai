@@ -8,14 +8,6 @@ const { findUser, updateUser } = require('~/models');
 const { logger } = require('~/config');
 
 const router = express.Router();
-
-// Price IDs should be set in environment variables
-// Format: STRIPE_PRICE_STANDARD_MONTHLY_CAD, STRIPE_PRICE_STANDARD_MONTHLY_USD, etc.
-const getPriceId = (plan, period, currency = 'CAD') => {
-  const key = `STRIPE_PRICE_${plan.toUpperCase()}_${period.toUpperCase()}_${currency.toUpperCase()}`;
-  return process.env[key];
-};
-
 // Token amounts per plan (configurable via environment variables)
 const getTokensForPlan = (plan) => {
   const tokenAmounts = {
@@ -26,8 +18,12 @@ const getTokensForPlan = (plan) => {
 };
 
 // Helper to get plan from price ID
-// Checks both CAD and USD price IDs
-const getPlanFromPriceId = (priceId) => {
+// Checks both CAD and USD price IDs, with fallback to Stripe API for pricing tables
+const getPlanFromPriceId = async (priceId) => {
+  if (!priceId) {
+    return null;
+  }
+
   const standardMonthlyCAD = process.env.STRIPE_PRICE_STANDARD_MONTHLY_CAD;
   const standardYearlyCAD = process.env.STRIPE_PRICE_STANDARD_YEARLY_CAD;
   const plusMonthlyCAD = process.env.STRIPE_PRICE_PLUS_MONTHLY_CAD;
@@ -37,6 +33,7 @@ const getPlanFromPriceId = (priceId) => {
   const plusMonthlyUSD = process.env.STRIPE_PRICE_PLUS_MONTHLY_USD;
   const plusYearlyUSD = process.env.STRIPE_PRICE_PLUS_YEARLY_USD;
 
+  // Check against configured price IDs first
   if (
     priceId === standardMonthlyCAD ||
     priceId === standardYearlyCAD ||
@@ -53,22 +50,78 @@ const getPlanFromPriceId = (priceId) => {
   ) {
     return 'plus';
   }
-  return null;
+
+  // Fallback: Fetch price from Stripe API for pricing table price IDs
+  // This handles cases where pricing tables use price IDs not in env vars
+  try {
+    const price = await stripe.prices.retrieve(priceId);
+    const amount = price.unit_amount; // Amount in cents
+    const isRecurring = price.recurring !== null;
+    const interval = isRecurring ? price.recurring.interval : null;
+
+    // Determine plan based on price amount
+    // Standard monthly: typically $25-30 USD (2500-3000 cents) or $30 CAD (3000 cents)
+    // Plus monthly: typically $42-50 USD (4200-5000 cents) or $50 CAD (5000 cents)
+    // Standard yearly: typically $250-300 USD (25000-30000 cents) or $300 CAD (30000 cents)
+    // Plus yearly: typically $420-500 USD (42000-50000 cents) or $500 CAD (50000 cents)
+
+    // Plus plan thresholds (higher amounts)
+    if (interval === 'month' && amount >= 4200) {
+      return 'plus';
+    } else if (interval === 'year' && amount >= 42000) {
+      return 'plus';
+    } else if (amount >= 4200) {
+      // Fallback: if amount is high enough, assume plus
+      return 'plus';
+    }
+
+    // Standard plan thresholds (lower amounts)
+    if (interval === 'month' && amount >= 2500 && amount < 4200) {
+      return 'standard';
+    } else if (interval === 'year' && amount >= 25000 && amount < 42000) {
+      return 'standard';
+    } else if (amount >= 2500 && amount < 4200) {
+      // Fallback: if amount is in standard range, assume standard
+      return 'standard';
+    }
+
+    logger.warn(`Could not determine plan from price amount: ${amount} cents for price ${priceId}`);
+    return null;
+  } catch (error) {
+    logger.error(`Error retrieving price ${priceId} from Stripe:`, error);
+    return null;
+  }
 };
 
 // Helper to check if price ID is for a yearly subscription
-const isYearlySubscription = (priceId) => {
+const isYearlySubscription = async (priceId) => {
+  if (!priceId) {
+    return false;
+  }
+
   const standardYearlyCAD = process.env.STRIPE_PRICE_STANDARD_YEARLY_CAD;
   const plusYearlyCAD = process.env.STRIPE_PRICE_PLUS_YEARLY_CAD;
   const standardYearlyUSD = process.env.STRIPE_PRICE_STANDARD_YEARLY_USD;
   const plusYearlyUSD = process.env.STRIPE_PRICE_PLUS_YEARLY_USD;
 
-  return (
+  // Check against configured price IDs first
+  if (
     priceId === standardYearlyCAD ||
     priceId === plusYearlyCAD ||
     priceId === standardYearlyUSD ||
     priceId === plusYearlyUSD
-  );
+  ) {
+    return true;
+  }
+
+  // Fallback: Check via Stripe API for pricing table price IDs
+  try {
+    const price = await stripe.prices.retrieve(priceId);
+    return price.recurring?.interval === 'year';
+  } catch (error) {
+    logger.error(`Error retrieving price ${priceId} to check interval:`, error);
+    return false;
+  }
 };
 
 /**
@@ -77,8 +130,8 @@ const isYearlySubscription = (priceId) => {
  */
 async function updateBalanceForSubscription(userId, subscription) {
   const priceId = subscription.items?.data?.[0]?.price?.id;
-  const plan = getPlanFromPriceId(priceId) || subscription.metadata?.plan;
-  const isYearly = isYearlySubscription(priceId);
+  const plan = (await getPlanFromPriceId(priceId)) || subscription.metadata?.plan;
+  const isYearly = await isYearlySubscription(priceId);
 
   if (!plan) {
     logger.warn(`Could not determine plan for subscription: ${subscription.id}`);
@@ -132,318 +185,33 @@ async function updateBalanceForSubscription(userId, subscription) {
   );
 }
 
-router.post('/create-setup-intent', requireJwtAuth, async (req, res) => {
+/**
+ * Get Stripe Checkout Session status
+ * Used after redirect from Stripe Checkout to verify payment status
+ */
+router.get('/session-status', requireJwtAuth, async (req, res) => {
   try {
-    const { planId, currency = 'CAD' } = req.body;
+    const { session_id } = req.query;
 
-    if (!planId) {
-      return res.status(400).json({ error: 'planId is required' });
+    if (!session_id) {
+      return res.status(400).json({ error: 'session_id is required' });
     }
 
-    // Validate currency
-    if (currency !== 'CAD' && currency !== 'USD') {
-      return res.status(400).json({ error: 'Invalid currency. Must be CAD or USD' });
-    }
-
-    // Parse planId to extract plan and period
-    const [plan, period] = planId.split('-');
-
-    if (!plan || !period) {
-      return res.status(400).json({
-        error: 'Invalid planId format. Expected format: "plan-period" (e.g., "standard-monthly")',
-      });
-    }
-
-    const priceId = getPriceId(plan, period, currency);
-    if (!priceId) {
-      logger.error(`Price ID not found for ${plan} ${period} ${currency}`);
-      return res.status(400).json({ error: 'Invalid subscription plan or currency' });
-    }
-
-    // Create or retrieve customer
-    let customer;
-    const existingCustomers = await stripe.customers.list({
-      email: req.user?.email,
-      limit: 1,
-    });
-
-    if (existingCustomers.data.length > 0) {
-      customer = existingCustomers.data[0];
-    } else {
-      customer = await stripe.customers.create({
-        email: req.user?.email,
-        metadata: {
-          userId: req.user?.id?.toString() || '',
-        },
-      });
-    }
-
-    // Create Setup Intent for subscription
-    const setupIntent = await stripe.setupIntents.create({
-      customer: customer.id,
-      payment_method_types: ['card'],
-      metadata: {
-        userId: req.user?.id?.toString() || '',
-        plan,
-        period,
-        priceId,
-      },
+    const session = await stripe.checkout.sessions.retrieve(session_id, {
+      expand: ['payment_intent'],
     });
 
     res.json({
-      clientSecret: setupIntent.client_secret,
-      setupIntentId: setupIntent.id,
+      status: session.status,
+      payment_status: session.payment_status,
+      payment_intent_id: session.payment_intent?.id || null,
+      payment_intent_status: session.payment_intent?.status || null,
     });
   } catch (error) {
-    logger.error('Stripe setup intent creation error:', error);
-    res.status(500).json({ error: error.message || 'Failed to create setup intent' });
-  }
-});
-
-router.post('/create-subscription', requireJwtAuth, async (req, res) => {
-  try {
-    const { setupIntentId, planId, currency = 'CAD' } = req.body;
-
-    if (!setupIntentId || !planId) {
-      return res.status(400).json({ error: 'setupIntentId and planId are required' });
-    }
-
-    // Validate currency
-    if (currency !== 'CAD' && currency !== 'USD') {
-      return res.status(400).json({ error: 'Invalid currency. Must be CAD or USD' });
-    }
-
-    // Retrieve the setup intent to get payment method
-    const setupIntent = await stripe.setupIntents.retrieve(setupIntentId);
-
-    if (setupIntent.status !== 'succeeded') {
-      return res.status(400).json({ error: 'Setup Intent not succeeded' });
-    }
-
-    const paymentMethodId = setupIntent.payment_method;
-    if (!paymentMethodId || typeof paymentMethodId !== 'string') {
-      return res.status(400).json({ error: 'Payment method not found' });
-    }
-
-    // Parse planId
-    const [plan, period] = planId.split('-');
-    const priceId = getPriceId(plan, period, currency);
-
-    if (!priceId) {
-      return res.status(400).json({ error: 'Invalid subscription plan or currency' });
-    }
-
-    // Get customer from setup intent
-    const customerId = setupIntent.customer;
-    if (!customerId || typeof customerId !== 'string') {
-      return res.status(400).json({ error: 'Customer not found' });
-    }
-
-    // Attach payment method to customer (if not already attached)
-    try {
-      await stripe.paymentMethods.attach(paymentMethodId, {
-        customer: customerId,
-      });
-    } catch (error) {
-      // Payment method might already be attached, which is fine
-      if (error.code !== 'resource_already_exists') {
-        throw error;
-      }
-    }
-
-    // Set the payment method as default for the customer
-    await stripe.customers.update(customerId, {
-      invoice_settings: {
-        default_payment_method: paymentMethodId,
-      },
-    });
-
-    // Create subscription with the already-authorized payment method
-    // Since the payment method was authorized via SetupIntent, Stripe will charge it immediately
-    // Using 'error_if_incomplete' ensures the payment succeeds or fails immediately (no pending state)
-    const subscription = await stripe.subscriptions.create({
-      customer: customerId,
-      items: [{ price: priceId }],
-      default_payment_method: paymentMethodId,
-      payment_behavior: 'error_if_incomplete', // Charge immediately, fail if payment can't complete
-      payment_settings: {
-        payment_method_types: ['card'],
-        save_default_payment_method: 'on_subscription',
-      },
-      expand: ['latest_invoice.payment_intent'],
-      metadata: {
-        userId: req.user?.id?.toString() || '',
-        plan,
-        period,
-      },
-    });
-
-    // No client_secret needed - payment method was already authorized via SetupIntent
-    // Subscription should be active or will have failed with error_if_incomplete
-
-    // Update user with Stripe customer and subscription info
-    const userUpdate = {
-      stripeCustomerId: customerId,
-      stripeSubscriptionId: subscription.id,
-      subscriptionPlan: plan,
-      subscriptionStatus: subscription.status,
-    };
-
-    // Only set period end if it exists
-    if (subscription.current_period_end) {
-      userUpdate.subscriptionPeriodEnd = new Date(subscription.current_period_end * 1000);
-    }
-
-    await updateUser(req.user.id, userUpdate);
-
-    // Check if payment succeeded immediately and update balance synchronously
-    // This handles the case where payment completes before webhook arrives
-    const invoiceId =
-      typeof subscription.latest_invoice === 'string'
-        ? subscription.latest_invoice
-        : subscription.latest_invoice?.id;
-
-    if (subscription.status === 'active' && invoiceId) {
-      try {
-        const invoice = await stripe.invoices.retrieve(invoiceId);
-
-        // If invoice is paid, update balance immediately (synchronously)
-        if (invoice.status === 'paid' && invoice.billing_reason === 'subscription_create') {
-          await updateBalanceForSubscription(req.user.id, subscription);
-
-          logger.info(
-            `Subscription created and payment confirmed for user ${req.user.id}: balance updated (${plan} plan)`,
-          );
-        }
-      } catch (invoiceError) {
-        // If we can't retrieve invoice, that's okay - webhook will handle it
-        logger.warn(
-          `Could not retrieve invoice ${invoiceId} to update balance: ${invoiceError.message}`,
-        );
-      }
-    }
-
-    logger.info(
-      `Subscription created for user ${req.user.id} with status: ${subscription.status} (${plan} plan). Payment charged automatically using pre-authorized payment method.`,
-    );
-
-    res.json({
-      subscriptionId: subscription.id,
-      status: subscription.status,
-    });
-  } catch (error) {
-    logger.error('Stripe subscription creation error:', error);
-    res.status(500).json({ error: error.message || 'Failed to create subscription' });
-  }
-});
-
-router.get('/subscription-status', requireJwtAuth, async (req, res) => {
-  try {
-    const { subscription_id } = req.query;
-
-    if (!subscription_id) {
-      return res.status(400).json({ error: 'Subscription ID is required' });
-    }
-
-    const subscription = await stripe.subscriptions.retrieve(subscription_id);
-
-    res.json({
-      status: subscription.status,
-      current_period_end: subscription.current_period_end,
-      cancel_at_period_end: subscription.cancel_at_period_end,
-    });
-  } catch (error) {
-    logger.error('Stripe subscription status error:', error);
+    logger.error('Stripe session status error:', error);
     res.status(500).json({
-      error: error.message || 'Failed to retrieve subscription status',
+      error: error.message || 'Failed to retrieve session status',
     });
-  }
-});
-
-// Get current user's subscription info
-router.get('/my-subscription', requireJwtAuth, async (req, res) => {
-  try {
-    const user = await findUser({ _id: req.user.id });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // If user has a Stripe subscription ID, fetch current status
-    if (user.stripeSubscriptionId) {
-      try {
-        const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
-        return res.json({
-          hasSubscription: true,
-          subscriptionPlan: user.subscriptionPlan,
-          subscriptionStatus: subscription.status,
-          currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-          cancelAtPeriodEnd: subscription.cancel_at_period_end,
-        });
-      } catch (stripeError) {
-        // Subscription may have been deleted in Stripe
-        logger.warn('Could not retrieve subscription from Stripe:', stripeError.message);
-      }
-    }
-
-    res.json({
-      hasSubscription: false,
-      subscriptionPlan: null,
-      subscriptionStatus: null,
-      currentPeriodEnd: null,
-      cancelAtPeriodEnd: false,
-    });
-  } catch (error) {
-    logger.error('Error fetching subscription:', error);
-    res.status(500).json({ error: 'Failed to fetch subscription info' });
-  }
-});
-
-// Cancel subscription at period end
-router.post('/cancel-subscription', requireJwtAuth, async (req, res) => {
-  try {
-    const user = await findUser({ _id: req.user.id });
-
-    if (!user || !user.stripeSubscriptionId) {
-      return res.status(400).json({ error: 'No active subscription found' });
-    }
-
-    const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
-      cancel_at_period_end: true,
-    });
-
-    res.json({
-      success: true,
-      cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-    });
-  } catch (error) {
-    logger.error('Error canceling subscription:', error);
-    res.status(500).json({ error: 'Failed to cancel subscription' });
-  }
-});
-
-// Reactivate subscription (if canceled but not yet expired)
-router.post('/reactivate-subscription', requireJwtAuth, async (req, res) => {
-  try {
-    const user = await findUser({ _id: req.user.id });
-
-    if (!user || !user.stripeSubscriptionId) {
-      return res.status(400).json({ error: 'No subscription found' });
-    }
-
-    const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
-      cancel_at_period_end: false,
-    });
-
-    res.json({
-      success: true,
-      cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      status: subscription.status,
-    });
-  } catch (error) {
-    logger.error('Error reactivating subscription:', error);
-    res.status(500).json({ error: 'Failed to reactivate subscription' });
   }
 });
 
@@ -458,7 +226,7 @@ router.post('/create-portal-session', requireJwtAuth, async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    console.log('user', user);
+
     if (!user.stripeCustomerId) {
       return res.status(400).json({ error: 'No Stripe customer found for this account' });
     }
@@ -504,6 +272,11 @@ router.post('/webhook', async (req, res) => {
 
   try {
     switch (event.type) {
+      case 'checkout.session.completed': {
+        await handleCheckoutSessionCompleted(event.data.object);
+        break;
+      }
+
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         await handleSubscriptionUpdate(event.data.object);
@@ -515,13 +288,21 @@ router.post('/webhook', async (req, res) => {
         break;
       }
 
-      case 'invoice.payment_succeeded': {
+      case 'invoice.payment_succeeded':
+      case 'invoice.paid': {
+        // Both events indicate successful payment, handle them the same way
         await handleInvoicePaymentSucceeded(event.data.object);
         break;
       }
 
       case 'invoice.payment_failed': {
         await handleInvoicePaymentFailed(event.data.object);
+        break;
+      }
+
+      case 'invoice_payment.paid': {
+        // Legacy event name, handle same as invoice.payment_succeeded
+        await handleInvoicePaymentSucceeded(event.data.object);
         break;
       }
 
@@ -537,26 +318,82 @@ router.post('/webhook', async (req, res) => {
 });
 
 /**
+ * Handle checkout session completed
+ * Links Stripe customer to user account when checkout completes via pricing table
+ */
+async function handleCheckoutSessionCompleted(session) {
+  const customerId = session.customer;
+  const customerEmail = session.customer_details?.email || session.customer_email;
+
+  if (!customerId || !customerEmail) {
+    logger.warn('Checkout session completed but missing customer ID or email', {
+      sessionId: session.id,
+    });
+    return;
+  }
+
+  // Find user by email
+  const user = await findUser({ email: customerEmail });
+  if (!user) {
+    logger.warn(`No user found for checkout session email: ${customerEmail}`);
+    return;
+  }
+
+  // Link Stripe customer to user account if not already linked
+  if (!user.stripeCustomerId) {
+    await updateUser(user._id.toString(), {
+      stripeCustomerId: customerId,
+    });
+    logger.info(`Linked Stripe customer ${customerId} to user ${user._id} from checkout session`);
+  } else if (user.stripeCustomerId !== customerId) {
+    logger.warn(
+      `User ${user._id} already has different Stripe customer ID: ${user.stripeCustomerId} vs ${customerId}`,
+    );
+  }
+
+  // If subscription was created, it will be handled by customer.subscription.created webhook
+  // This handler just ensures the customer is linked to the user account
+}
+
+/**
  * Handle subscription created/updated events
  */
 async function handleSubscriptionUpdate(subscription) {
   const customerId = subscription.customer;
 
   // Find user by Stripe customer ID
-  const user = await findUser({ stripeCustomerId: customerId });
+  let user = await findUser({ stripeCustomerId: customerId });
+
   if (!user) {
     // Try to find by metadata
-    const customer = await stripe.customers.retrieve(customerId);
-    const userId = customer.metadata?.userId;
-    if (userId) {
-      const userById = await findUser({ _id: userId });
-      if (userById) {
-        // Update user with stripeCustomerId for future lookups
-        await updateUser(userId, { stripeCustomerId: customerId });
-        await processSubscriptionUpdate(userById._id.toString(), subscription);
-        return;
+    try {
+      const customer = await stripe.customers.retrieve(customerId);
+      const userId = customer.metadata?.userId;
+      if (userId) {
+        const userById = await findUser({ _id: userId });
+        if (userById) {
+          // Update user with stripeCustomerId for future lookups
+          await updateUser(userId, { stripeCustomerId: customerId });
+          await processSubscriptionUpdate(userById._id.toString(), subscription);
+          return;
+        }
       }
+
+      // Fallback: try to find by email (for pricing table checkouts)
+      if (customer.email) {
+        user = await findUser({ email: customer.email });
+        if (user) {
+          // Link the customer ID for future lookups
+          await updateUser(user._id.toString(), { stripeCustomerId: customerId });
+          logger.info(`Linked Stripe customer ${customerId} to user ${user._id} via email lookup`);
+        }
+      }
+    } catch (error) {
+      logger.error(`Error retrieving customer ${customerId}:`, error);
     }
+  }
+
+  if (!user) {
     logger.warn(`No user found for Stripe customer: ${customerId}`);
     return;
   }
@@ -566,17 +403,58 @@ async function handleSubscriptionUpdate(subscription) {
 
 /**
  * Process subscription update for a user
+ * Handles subscription changes including cancellation/reactivation via Customer Portal
  */
 async function processSubscriptionUpdate(userId, subscription) {
   const priceId = subscription.items?.data?.[0]?.price?.id;
-  const plan = getPlanFromPriceId(priceId) || subscription.metadata?.plan;
-  const isYearly = isYearlySubscription(priceId);
+  const plan = (await getPlanFromPriceId(priceId)) || subscription.metadata?.plan;
+  const isYearly = await isYearlySubscription(priceId);
+
+  // Get current user to check previous subscription state
+  const user = await findUser({ _id: userId });
+  if (!user) {
+    logger.warn(`User not found for subscription update: ${userId}`);
+    return;
+  }
+
+  // Check if this is a cancellation/reactivation via Customer Portal
+  const cancelAtPeriodEnd = subscription.cancel_at_period_end;
+  const wasScheduledForCancellation =
+    user.subscriptionStatus === 'cancel_at_period_end' || user.subscriptionStatus === 'canceled';
 
   const updateData = {
     stripeSubscriptionId: subscription.id,
     subscriptionStatus: subscription.status,
     subscriptionPlan: plan,
   };
+
+  // Handle cancellation scheduled via Customer Portal
+  // When user cancels via portal, cancel_at_period_end becomes true but status stays 'active'
+  if (cancelAtPeriodEnd && subscription.status === 'active') {
+    // User just canceled via Customer Portal - subscription is still active until period end
+    updateData.subscriptionStatus = 'cancel_at_period_end';
+    logger.info(`Subscription scheduled for cancellation at period end for user ${userId}`);
+    // Keep auto-refill enabled until period end so they can use remaining time
+    // The subscription.deleted webhook will disable it when it actually cancels
+  }
+
+  // Handle reactivation via Customer Portal
+  // When user reactivates, cancel_at_period_end becomes false and status is 'active'
+  if (!cancelAtPeriodEnd && subscription.status === 'active' && wasScheduledForCancellation) {
+    // User reactivated a previously canceled subscription
+    updateData.subscriptionStatus = 'active';
+    logger.info(`Subscription reactivated for user ${userId}`);
+
+    // Re-enable auto-refill
+    await Balance.findOneAndUpdate(
+      { user: userId },
+      {
+        $set: {
+          autoRefillEnabled: true,
+        },
+      },
+    );
+  }
 
   // Only set period end if it exists (subscription must be active or trialing)
   if (subscription.current_period_end) {
@@ -588,7 +466,7 @@ async function processSubscriptionUpdate(userId, subscription) {
   // Don't update balance here - wait for invoice.payment_succeeded webhook
   // This ensures tokens are only granted after actual payment
   logger.info(
-    `Updated subscription for user ${userId}: ${subscription.status}, plan: ${plan}, yearly: ${isYearly}. Balance will be updated upon payment confirmation.`,
+    `Updated subscription for user ${userId}: ${subscription.status}, plan: ${plan}, yearly: ${isYearly}, cancel_at_period_end: ${cancelAtPeriodEnd}. Balance will be updated upon payment confirmation.`,
   );
 }
 
@@ -644,7 +522,31 @@ async function handleInvoicePaymentSucceeded(invoice) {
   }
 
   const customerId = invoice.customer;
-  const user = await findUser({ stripeCustomerId: customerId });
+
+  // Try to find user by Stripe customer ID first
+  let user = await findUser({ stripeCustomerId: customerId });
+
+  // If not found, try to find by customer email (fallback for race conditions)
+  if (!user) {
+    try {
+      const customer = await stripe.customers.retrieve(customerId);
+      const customerEmail = customer.email;
+      if (customerEmail) {
+        user = await findUser({ email: customerEmail });
+        if (user) {
+          // Link the customer ID for future lookups
+          await updateUser(user._id.toString(), {
+            stripeCustomerId: customerId,
+          });
+          logger.info(
+            `Linked Stripe customer ${customerId} to user ${user._id} via email lookup in invoice handler`,
+          );
+        }
+      }
+    } catch (error) {
+      logger.error(`Error retrieving customer ${customerId} for email lookup:`, error);
+    }
+  }
 
   if (!user) {
     logger.warn(`No user found for invoice payment customer: ${customerId}`);
@@ -658,13 +560,19 @@ async function handleInvoicePaymentSucceeded(invoice) {
   const isRenewal = invoice.billing_reason === 'subscription_cycle';
   const isNewSubscription = invoice.billing_reason === 'subscription_create';
 
+  logger.info(
+    `Processing invoice payment for user ${user._id}, subscription: ${subscriptionId}, billing_reason: ${invoice.billing_reason}, isNewSubscription: ${isNewSubscription}, isRenewal: ${isRenewal}`,
+  );
+
   if (isRenewal || isNewSubscription) {
     const priceId = subscription.items?.data?.[0]?.price?.id;
-    const plan = getPlanFromPriceId(priceId) || subscription.metadata?.plan;
-    const isYearly = isYearlySubscription(priceId);
+    const plan = (await getPlanFromPriceId(priceId)) || subscription.metadata?.plan;
+    const isYearly = await isYearlySubscription(priceId);
 
     if (!plan) {
-      logger.warn(`Could not determine plan for subscription: ${subscriptionId}`);
+      logger.warn(
+        `Could not determine plan for subscription: ${subscriptionId}, priceId: ${priceId}`,
+      );
       return;
     }
 
@@ -674,9 +582,17 @@ async function handleInvoicePaymentSucceeded(invoice) {
     // - Monthly refills are handled by the cron job
     const shouldAddTokens = isNewSubscription || (isRenewal && isYearly);
 
+    logger.info(
+      `Invoice payment details - plan: ${plan}, isYearly: ${isYearly}, shouldAddTokens: ${shouldAddTokens}`,
+    );
+
     if (shouldAddTokens) {
       // Use the helper function to update balance
+      logger.info(`Updating balance for user ${user._id} with subscription ${subscriptionId}`);
       await updateBalanceForSubscription(user._id.toString(), subscription);
+      logger.info(`Balance updated successfully for user ${user._id}`);
+    } else {
+      logger.info(`Skipping balance update - tokens will be added via monthly refill cron job`);
     }
 
     // Update user subscription status to active
@@ -686,6 +602,10 @@ async function handleInvoicePaymentSucceeded(invoice) {
 
     logger.info(
       `${isRenewal ? 'Renewed' : 'Created'} subscription for user ${user._id} (${plan} ${isYearly ? 'yearly' : 'monthly'} plan) - balance updated via webhook`,
+    );
+  } else {
+    logger.info(
+      `Skipping balance update - billing_reason ${invoice.billing_reason} is not subscription_create or subscription_cycle`,
     );
   }
 }

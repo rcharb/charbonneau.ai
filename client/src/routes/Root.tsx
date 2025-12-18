@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useRecoilState } from 'recoil';
 import { Outlet } from 'react-router-dom';
 import type { ContextType } from '~/common';
 import {
@@ -20,7 +21,8 @@ import { TermsAndConditionsModal } from '~/components/ui';
 import { Nav, MobileNav } from '~/components/Nav';
 import { useHealthCheck } from '~/data-provider';
 import { Banner } from '~/components/Banners';
-import { ChoosePlanModal, CheckoutModal } from '~/components/Subscription';
+import { StripePricingTable } from '~/components/Subscription';
+import store from '~/store';
 
 export default function Root() {
   const [showTerms, setShowTerms] = useState(false);
@@ -29,6 +31,7 @@ export default function Root() {
     const savedNavVisible = localStorage.getItem('navVisible');
     return savedNavVisible !== null ? JSON.parse(savedNavVisible) : true;
   });
+  const [showPricingTable, setShowPricingTable] = useRecoilState(store.showChoosePlan);
 
   const { isAuthenticated, logout } = useAuthContext();
 
@@ -93,8 +96,7 @@ export default function Root() {
               modalContent={config.interface.termsOfService.modalContent}
             />
           )}
-          <ChoosePlanModal />
-          <CheckoutModal />
+          <StripePricingTable open={showPricingTable} onClose={() => setShowPricingTable(false)} />
         </AssistantsMapContext.Provider>
       </FileMapContext.Provider>
     </SetConvoProvider>

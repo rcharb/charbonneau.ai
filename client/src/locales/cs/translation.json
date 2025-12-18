@@ -290,7 +290,6 @@
   "com_nav_font_size_xl": "Extra velká",
   "com_nav_font_size_xs": "Extra malá",
   "com_nav_help_faq": "Nápověda a FAQ",
-  "com_nav_manage_subscription": "Spravovat předplatné",
   "com_nav_hide_panel": "Skrýt pravý panel",
   "com_nav_info_code_artifacts": "Povoluje zobrazování experimentálních kódových artefaktů vedle chatu",
   "com_nav_info_code_artifacts_agent": "Povoluje použití kódových artefaktů pro tohoto agenta. Ve výchozím nastavení jsou přidány další instrukce specifické pro použití artefaktů, pokud není povolen režim \"Vlastní výzva\".",
@@ -749,8 +748,5 @@
   "com_ui_yes": "Ano",
   "com_ui_zoom": "Přiblížit",
   "com_user_message": "Vy",
-  "com_subscription_monthly_short": "Měsíční",
-  "com_subscription_yearly": "Roční",
-  "com_subscription_save": "Ušetřit",
   "com_subscription_currency": "Měna"
 }
