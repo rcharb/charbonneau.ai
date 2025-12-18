@@ -375,7 +375,6 @@
   "com_nav_font_size_xl": "ใหญ่พิเศษ",
   "com_nav_font_size_xs": "เล็กพิเศษ",
   "com_nav_help_faq": "ความช่วยเหลือและคำถามที่พบบ่อย",
-  "com_nav_manage_subscription": "จัดการการสมัครสมาชิก",
   "com_nav_hide_panel": "ซ่อนแผงด้านขวาสุด",
   "com_nav_info_code_artifacts": "เปิดใช้งานการแสดงสิ่งประดิษฐ์โค้ดทดลองข้างแชท",
   "com_nav_info_code_artifacts_agent": "เปิดใช้งานการใช้สิ่งประดิษฐ์โค้ดสำหรับเอเจนต์นี้ โดยค่าเริ่มต้น คำแนะนำเพิ่มเติมเฉพาะสำหรับการใช้สิ่งประดิษฐ์จะถูกเพิ่ม เว้นแต่จะเปิดใช้งาน \"โหมดพรอมต์แบบกำหนดเอง\"",
@@ -838,8 +837,5 @@
   "com_ui_yes": "ใช่",
   "com_ui_zoom": "ขยาย",
   "com_user_message": "คุณ",
-  "com_subscription_monthly_short": "รายเดือน",
-  "com_subscription_yearly": "รายปี",
-  "com_subscription_save": "ประหยัด",
   "com_subscription_currency": "สกุลเงิน"
 }

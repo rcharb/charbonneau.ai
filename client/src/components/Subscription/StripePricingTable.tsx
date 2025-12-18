@@ -10,20 +10,7 @@ const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || ''
 const STRIPE_PRICING_TABLE_ID_LIGHT = import.meta.env.VITE_STRIPE_PRICING_TABLE_ID_LIGHT || '';
 const STRIPE_PRICING_TABLE_ID_DARK = import.meta.env.VITE_STRIPE_PRICING_TABLE_ID_DARK || '';
 
-// Declare Stripe pricing table custom element types
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      'stripe-pricing-table': React.DetailedHTMLProps<
-        React.HTMLAttributes<HTMLElement> & {
-          'pricing-table-id': string;
-          'publishable-key': string;
-        },
-        HTMLElement
-      >;
-    }
-  }
-}
+import './stripe-pricing-table.d';
 
 interface StripePricingTableProps {
   open: boolean;
