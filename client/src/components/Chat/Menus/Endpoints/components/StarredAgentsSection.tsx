@@ -22,7 +22,7 @@ export function StarredAgentsSection({ agentsEndpoint }: StarredAgentsSectionPro
   const { data, isLoading, isFetching } = useMarketplaceAgentsInfiniteQuery(
     {
       requiredPermission: PermissionBits.VIEW,
-      category: 'favourites',
+      category: 'starred',
       limit: 100, // Get all starred agents
     },
     {
@@ -61,7 +61,7 @@ export function StarredAgentsSection({ agentsEndpoint }: StarredAgentsSectionPro
     return null;
   }
 
-  const placeholder = localize('com_endpoint_search_var', { 0: localize('com_agents_favourites') });
+  const placeholder = localize('com_endpoint_search_var', { 0: localize('com_agents_starred') });
 
   return (
     <Menu
@@ -76,7 +76,7 @@ export function StarredAgentsSection({ agentsEndpoint }: StarredAgentsSectionPro
         <div className="group flex w-full flex-shrink cursor-pointer items-center justify-between rounded-xl px-1 py-1 text-sm">
           <div className="flex items-center gap-2">
             <Star className="h-4 w-4 flex-shrink-0 text-yellow-500" fill="currentColor" />
-            <span className="truncate text-left">{localize('com_agents_favourites')}</span>
+            <span className="truncate text-left">{localize('com_agents_starred')}</span>
           </div>
         </div>
       }
@@ -94,10 +94,10 @@ export function StarredAgentsSection({ agentsEndpoint }: StarredAgentsSectionPro
             <div className="flex flex-col items-center justify-center p-4 text-center">
               <Star className="mb-2 h-8 w-8 text-text-secondary" />
               <p className="text-sm font-medium text-text-primary">
-                {localize('com_agents_favourites_empty')}
+                {localize('com_agents_starred_empty')}
               </p>
               <p className="mt-1 text-xs text-text-secondary">
-                {localize('com_agents_favourites_empty_description')}
+                {localize('com_agents_starred_empty_description')}
               </p>
             </div>
           );

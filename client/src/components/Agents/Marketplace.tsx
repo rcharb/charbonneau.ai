@@ -166,8 +166,8 @@ const AgentMarketplace: React.FC<AgentMarketplaceProps> = ({ className = '' }) =
     const searchParamsStr = currentSearchParams ? `?${currentSearchParams}` : '';
     if (tabValue === 'promoted') {
       navigate(`/agents${searchParamsStr}`);
-    } else if (tabValue === 'favourites') {
-      navigate(`/agents/favourites${searchParamsStr}`);
+    } else if (tabValue === 'starred') {
+      navigate(`/agents/starred${searchParamsStr}`);
     } else {
       navigate(`/agents/${tabValue}${searchParamsStr}`);
     }
@@ -208,9 +208,9 @@ const AgentMarketplace: React.FC<AgentMarketplaceProps> = ({ className = '' }) =
     }
 
     // Always preserve current category when searching or clearing search
-    if (currentCategory === 'promoted' || currentCategory === 'favourites') {
+    if (currentCategory === 'promoted' || currentCategory === 'starred') {
       navigate(
-        `/agents${currentCategory === 'favourites' ? '/favourites' : ''}${newParams.toString() ? `?${newParams.toString()}` : ''}`,
+        `/agents${currentCategory === 'starred' ? '/starred' : ''}${newParams.toString() ? `?${newParams.toString()}` : ''}`,
       );
     } else {
       navigate(
@@ -372,10 +372,10 @@ const AgentMarketplace: React.FC<AgentMarketplaceProps> = ({ className = '' }) =
                         {(() => {
                           // Get category data for display
                           const getCategoryData = () => {
-                            if (displayCategory === 'favourites') {
+                            if (displayCategory === 'starred') {
                               return {
-                                name: localize('com_agents_favourites'),
-                                description: localize('com_agents_favourites_description'),
+                                name: localize('com_agents_starred'),
+                                description: localize('com_agents_starred_description'),
                               };
                             }
                             if (displayCategory === 'promoted') {
@@ -455,10 +455,10 @@ const AgentMarketplace: React.FC<AgentMarketplaceProps> = ({ className = '' }) =
                           {(() => {
                             // Get category data for display
                             const getCategoryData = () => {
-                              if (nextCategory === 'favourites') {
+                              if (nextCategory === 'starred') {
                                 return {
-                                  name: localize('com_agents_favourites'),
-                                  description: localize('com_agents_favourites_description'),
+                                  name: localize('com_agents_starred'),
+                                  description: localize('com_agents_starred_description'),
                                 };
                               }
                               if (nextCategory === 'promoted') {

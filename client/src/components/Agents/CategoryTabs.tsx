@@ -39,8 +39,8 @@ const CategoryTabs: React.FC<CategoryTabsProps> = ({
   /** Helper function to get category display name from database data */
   const getCategoryDisplayName = (category: t.TCategory) => {
     // Special cases for system categories
-    if (category.value === 'favourites') {
-      return localize('com_agents_favourites');
+    if (category.value === 'starred') {
+      return localize('com_agents_starred');
     }
     if (category.value === 'promoted') {
       return localize('com_agents_top_picks');

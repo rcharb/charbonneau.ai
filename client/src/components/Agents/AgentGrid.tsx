@@ -46,16 +46,16 @@ const AgentGrid: React.FC<AgentGridProps> = ({
     // Handle search
     if (searchQuery) {
       params.search = searchQuery;
-      // Include category filter for search if it's not 'all', 'promoted', or 'favourites'
-      if (category !== 'all' && category !== 'promoted' && category !== 'favourites') {
+      // Include category filter for search if it's not 'all', 'promoted', or 'starred'
+      if (category !== 'all' && category !== 'promoted' && category !== 'starred') {
         params.category = category;
       }
     } else {
       // Handle category-based queries
       if (category === 'promoted') {
         params.promoted = 1;
-      } else if (category === 'favourites') {
-        params.category = 'favourites';
+      } else if (category === 'starred') {
+        params.category = 'starred';
       } else if (category !== 'all') {
         params.category = category;
       }
@@ -172,8 +172,8 @@ const AgentGrid: React.FC<AgentGridProps> = ({
           role="status"
           aria-live="polite"
           aria-label={(() => {
-            if (category === 'favourites') {
-              return localize('com_agents_favourites_empty');
+            if (category === 'starred') {
+              return localize('com_agents_starred_empty');
             }
             if (searchQuery) {
               return localize('com_agents_search_empty_heading');
@@ -182,13 +182,13 @@ const AgentGrid: React.FC<AgentGridProps> = ({
           })()}
         >
           <h3 className="mb-2 text-lg font-medium">
-            {category === 'favourites'
-              ? localize('com_agents_favourites_empty')
+            {category === 'starred'
+              ? localize('com_agents_starred_empty')
               : localize('com_agents_empty_state_heading')}
           </h3>
-          {category === 'favourites' && (
+          {category === 'starred' && (
             <p className="text-sm text-text-secondary">
-              {localize('com_agents_favourites_empty_description')}
+              {localize('com_agents_starred_empty_description')}
             </p>
           )}
         </div>

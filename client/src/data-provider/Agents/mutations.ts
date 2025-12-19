@@ -451,22 +451,22 @@ export const useStarAgentMutation = (
           };
         });
 
-        // Optimistically add agent to favourites query if it exists
+        // Optimistically add agent to starred query if it exists
         queryClient.setQueriesData(
           {
             queryKey: [QueryKeys.marketplaceAgents],
             predicate: (query) => {
               const params = query.queryKey[1] as any;
-              return params?.category === 'favourites';
+              return params?.category === 'starred';
             },
           },
           (old: any) => {
             if (!old?.pages) {
-              // If favourites query doesn't exist yet, create it with the new agent
+              // If starred query doesn't exist yet, create it with the new agent
               // We'll need to fetch the agent data, but for now just invalidate
               return old;
             }
-            // Check if agent is already in the favourites list
+            // Check if agent is already in the starred list
             const agentExists = old.pages.some((page: t.AgentListResponse) =>
               page.data?.some((agent: t.Agent) => agent.id === agent_id),
             );
@@ -482,16 +482,16 @@ export const useStarAgentMutation = (
                 })),
               };
             }
-            // Agent not in favourites list yet - invalidate to refetch
+            // Agent not in starred list yet - invalidate to refetch
             return old;
           },
         );
 
-        // Invalidate categories to update favourites count
+        // Invalidate categories to update starred count
         queryClient.invalidateQueries([QueryKeys.agentCategories]);
 
         // Invalidate all marketplace queries to refresh starred agents in dropdown
-        // This ensures the favourites query refetches to include the newly starred agent
+        // This ensures the starred query refetches to include the newly starred agent
         queryClient.invalidateQueries([QueryKeys.marketplaceAgents], { refetchType: 'active' });
 
         return options?.onSuccess?.(_data, agent_id, context);
@@ -530,7 +530,7 @@ export const useUnstarAgentMutation = (
         );
 
         // Update infinite query pages - only update isStarred flag, don't remove agent
-        // This keeps unstarred agents visible in marketplace Favourites tab until navigation/refresh
+        // This keeps unstarred agents visible in marketplace starred tab until navigation/refresh
         queryClient.setQueriesData({ queryKey: [QueryKeys.marketplaceAgents] }, (old: any) => {
           if (!old?.pages) return old;
           return {
@@ -544,17 +544,17 @@ export const useUnstarAgentMutation = (
           };
         });
 
-        // Invalidate categories to update favourites count
+        // Invalidate categories to update starred count
         queryClient.invalidateQueries([QueryKeys.agentCategories]);
 
-        // Only invalidate favourites queries used by dropdown (not marketplace)
+        // Only invalidate starred queries used by dropdown (not marketplace)
         // This ensures dropdown updates immediately while marketplace keeps unstarred agents visible
         queryClient.invalidateQueries({
           queryKey: [QueryKeys.marketplaceAgents],
           predicate: (query) => {
             const params = query.queryKey[1] as any;
-            // Only invalidate if it's a favourites query with high limit (dropdown uses limit: 100)
-            return params?.category === 'favourites' && params?.limit >= 100;
+            // Only invalidate if it's a starred query with high limit (dropdown uses limit: 100)
+            return params?.category === 'starred' && params?.limit >= 100;
           },
           refetchType: 'active',
         });

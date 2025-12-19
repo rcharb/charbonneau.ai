@@ -504,9 +504,9 @@ const getListAgentsHandler = async (req, res) => {
     // Base filter
     const filter = {};
 
-    // Handle favourites category - filter by starred agent IDs
+    // Handle starred category - filter by starred agent IDs
     let starredAgentIds = [];
-    if (category === 'favourites') {
+    if (category === 'starred') {
       const user = await getUserById(userId, 'starredAgents');
       starredAgentIds = user?.starredAgents || [];
       if (starredAgentIds.length === 0) {
@@ -518,8 +518,8 @@ const getListAgentsHandler = async (req, res) => {
       }
     }
 
-    // Handle category filter - only apply if category is defined and not favourites
-    if (category !== undefined && category.trim() !== '' && category !== 'favourites') {
+    // Handle category filter - only apply if category is defined and not starred
+    if (category !== undefined && category.trim() !== '' && category !== 'starred') {
       filter.category = category;
     }
 
@@ -550,9 +550,9 @@ const getListAgentsHandler = async (req, res) => {
       requiredPermissions: PermissionBits.VIEW,
     });
 
-    // For favourites, intersect accessible IDs with starred agent IDs
+    // For starred, intersect accessible IDs with starred agent IDs
     let finalAccessibleIds = accessibleIds;
-    if (category === 'favourites' && starredAgentIds.length > 0) {
+    if (category === 'starred' && starredAgentIds.length > 0) {
       // Get agent documents to match by id field (not _id)
       const { getAgent } = require('~/models/Agent');
       const starredAgents = await Promise.all(
@@ -776,13 +776,13 @@ const getAgentCategories = async (req, res) => {
       description: category.description,
     }));
 
-    // Add favourites category at the beginning if user is logged in
+    // Add starred category at the beginning if user is logged in
     if (req.user && req.user.id) {
       const user = await getUserById(req.user.id, 'starredAgents');
       const starredCount = user?.starredAgents?.length || 0;
       formattedCategories.unshift({
-        value: 'favourites',
-        label: 'Favourites',
+        value: 'starred',
+        label: 'starred',
         count: starredCount,
         description: 'Your starred agents',
       });
