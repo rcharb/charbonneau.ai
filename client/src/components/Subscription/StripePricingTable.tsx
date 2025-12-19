@@ -3,12 +3,8 @@ import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@
 import { X } from 'lucide-react';
 import { Button } from '@librechat/client';
 import { useLocalize } from '~/hooks';
+import { useGetStartupConfig } from '~/data-provider';
 import { cn } from '~/utils';
-
-// Environment variables for Stripe pricing tables
-const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
-const STRIPE_PRICING_TABLE_ID_LIGHT = import.meta.env.VITE_STRIPE_PRICING_TABLE_ID_LIGHT || '';
-const STRIPE_PRICING_TABLE_ID_DARK = import.meta.env.VITE_STRIPE_PRICING_TABLE_ID_DARK || '';
 
 interface StripePricingTableProps {
   open: boolean;
@@ -18,6 +14,12 @@ interface StripePricingTableProps {
 export default function StripePricingTable({ open, onClose }: StripePricingTableProps) {
   const localize = useLocalize();
   const scriptLoadedRef = useRef(false);
+  const { data: startupConfig } = useGetStartupConfig();
+
+  // Get Stripe config from API
+  const stripePublishableKey = startupConfig?.stripePublishableKey || '';
+  const stripePricingTableIdLight = startupConfig?.stripePricingTableIdLight || '';
+  const stripePricingTableIdDark = startupConfig?.stripePricingTableIdDark || '';
 
   // Load Stripe pricing table script
   useEffect(() => {
@@ -40,9 +42,9 @@ export default function StripePricingTable({ open, onClose }: StripePricingTable
 
   // Determine which pricing table to use based on theme
   const isDarkMode = document.documentElement.classList.contains('dark');
-  const pricingTableId = isDarkMode ? STRIPE_PRICING_TABLE_ID_DARK : STRIPE_PRICING_TABLE_ID_LIGHT;
+  const pricingTableId = isDarkMode ? stripePricingTableIdDark : stripePricingTableIdLight;
 
-  if (!STRIPE_PUBLISHABLE_KEY || !pricingTableId) {
+  if (!stripePublishableKey || !pricingTableId) {
     return (
       <Transition appear show={open}>
         <Dialog as="div" className="relative z-50" onClose={onClose}>
@@ -131,7 +133,7 @@ export default function StripePricingTable({ open, onClose }: StripePricingTable
               <div className="max-h-[calc(90vh-100px)] overflow-y-auto p-6">
                 <stripe-pricing-table
                   pricing-table-id={pricingTableId}
-                  publishable-key={STRIPE_PUBLISHABLE_KEY}
+                  publishable-key={stripePublishableKey}
                 />
               </div>
             </DialogPanel>

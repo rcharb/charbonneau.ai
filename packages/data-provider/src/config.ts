@@ -679,6 +679,9 @@ export type TStartupConfig = {
   >;
   mcpPlaceholder?: string;
   conversationImportMaxFileSize?: number;
+  stripePublishableKey?: string;
+  stripePricingTableIdLight?: string;
+  stripePricingTableIdDark?: string;
 };
 
 export enum OCRStrategy {

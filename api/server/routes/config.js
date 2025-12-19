@@ -154,6 +154,9 @@ router.get('/', async function (req, res) {
       conversationImportMaxFileSize: process.env.CONVERSATION_IMPORT_MAX_FILE_SIZE_BYTES
         ? parseInt(process.env.CONVERSATION_IMPORT_MAX_FILE_SIZE_BYTES, 10)
         : 0,
+      stripePublishableKey: process.env.VITE_STRIPE_PUBLISHABLE_KEY,
+      stripePricingTableIdLight: process.env.VITE_STRIPE_PRICING_TABLE_ID_LIGHT,
+      stripePricingTableIdDark: process.env.VITE_STRIPE_PRICING_TABLE_ID_DARK,
     };
 
     const minPasswordLength = parseInt(process.env.MIN_PASSWORD_LENGTH, 10);
