@@ -423,7 +423,22 @@ export const useStarAgentMutation = (
       onMutate: (variables) => options?.onMutate?.(variables),
       onError: (error, variables, context) => options?.onError?.(error, variables, context),
       onSuccess: (_data, agent_id, context) => {
-        // Optimistically update agent starred status in all queries
+        // Optimistically update agent starred status in agents queries
+        ((keys: t.AgentListParams[]) => {
+          keys.forEach((key) => {
+            const listRes = queryClient.getQueryData<t.AgentListResponse>([QueryKeys.agents, key]);
+            if (listRes) {
+              queryClient.setQueryData<t.AgentListResponse>([QueryKeys.agents, key], {
+                ...listRes,
+                data: listRes.data.map((agent) =>
+                  agent.id === agent_id ? { ...agent, isStarred: true } : agent,
+                ),
+              });
+            }
+          });
+        })(allAgentViewAndEditQueryKeys);
+
+        // Optimistically update agent starred status in marketplace queries (non-infinite)
         queryClient.setQueriesData<t.AgentListResponse>(
           { queryKey: [QueryKeys.marketplaceAgents] },
           (old) => {
@@ -451,48 +466,30 @@ export const useStarAgentMutation = (
           };
         });
 
-        // Optimistically add agent to starred query if it exists
-        queryClient.setQueriesData(
-          {
-            queryKey: [QueryKeys.marketplaceAgents],
-            predicate: (query) => {
-              const params = query.queryKey[1] as any;
-              return params?.category === 'starred';
-            },
-          },
-          (old: any) => {
-            if (!old?.pages) {
-              // If starred query doesn't exist yet, create it with the new agent
-              // We'll need to fetch the agent data, but for now just invalidate
-              return old;
-            }
-            // Check if agent is already in the starred list
-            const agentExists = old.pages.some((page: t.AgentListResponse) =>
-              page.data?.some((agent: t.Agent) => agent.id === agent_id),
-            );
-            if (agentExists) {
-              // Agent already exists, just update isStarred flag
-              return {
-                ...old,
-                pages: old.pages.map((page: t.AgentListResponse) => ({
-                  ...page,
-                  data: page.data?.map((agent: t.Agent) =>
-                    agent.id === agent_id ? { ...agent, isStarred: true } : agent,
-                  ),
-                })),
-              };
-            }
-            // Agent not in starred list yet - invalidate to refetch
-            return old;
-          },
-        );
+        // Also update individual agent queries if they exist
+        queryClient.setQueryData<t.Agent>([QueryKeys.agent, agent_id], (old) => {
+          if (!old) return old;
+          return { ...old, isStarred: true };
+        });
+        queryClient.setQueryData<t.Agent>([QueryKeys.agent, agent_id, 'expanded'], (old) => {
+          if (!old) return old;
+          return { ...old, isStarred: true };
+        });
 
         // Invalidate categories to update starred count
         queryClient.invalidateQueries([QueryKeys.agentCategories]);
 
-        // Invalidate all marketplace queries to refresh starred agents in dropdown
-        // This ensures the starred query refetches to include the newly starred agent
-        queryClient.invalidateQueries([QueryKeys.marketplaceAgents], { refetchType: 'active' });
+        // Only invalidate starred queries used by dropdown (not marketplace grid)
+        // This ensures dropdown updates immediately while marketplace grid updates optimistically
+        queryClient.invalidateQueries({
+          queryKey: [QueryKeys.marketplaceAgents],
+          predicate: (query) => {
+            const params = query.queryKey[1] as any;
+            // Only invalidate if it's a starred query with high limit (dropdown uses limit: 100)
+            return params?.category === 'starred' && params?.limit >= 100;
+          },
+          refetchType: 'active',
+        });
 
         return options?.onSuccess?.(_data, agent_id, context);
       },
